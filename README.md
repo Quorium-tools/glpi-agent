@@ -155,6 +155,25 @@ Run with dry-run writes:
 python -m glpi_agent.cli --dry-run "Create a ticket for a broken printer"
 ```
 
+Ticket CRUD examples:
+
+```bash
+python -m glpi_agent.cli "Create a fake test ticket titled 'Fix Docker dependencies' and generate harmless test details."
+python -m glpi_agent.cli "List my newest tickets."
+python -m glpi_agent.cli "Show ticket 12."
+python -m glpi_agent.cli "Update ticket 12 priority to high and status to processing."
+python -m glpi_agent.cli "Set ticket 12 opening date to 2026-05-19 13:13:23, type incident, request source ID 1, urgency medium, impact medium, priority low, total duration 30 minutes, and external ID EXT-12."
+python -m glpi_agent.cli "Set ticket 12 requester user ID 4, observer user ID 8, and assigned user ID 2."
+python -m glpi_agent.cli "Delete ticket 12. I confirm deleting ticket 12."
+```
+
+Support suggestion examples:
+
+```bash
+python -m glpi_agent.cli "Suggest a solution for ticket 12."
+python -m glpi_agent.cli "Add that solution to ticket 12 and mark it solved."
+```
+
 Run with a different model:
 
 ```bash
@@ -189,7 +208,7 @@ The web UI includes:
 
 - a modern chat surface
 - quick prompt buttons
-- a dry-run toggle, enabled by default
+- live GLPI writes by default
 - an optional OpenRouter model override
 - Enter-to-send support
 
@@ -200,6 +219,63 @@ python -m glpi_agent.cli
 ```
 
 from the project root, so it reuses the same `.env` file as the CLI.
+
+## Run With Docker Compose
+
+The compose setup starts two development services with live-mounted source code:
+
+- `backend`: Python GLPI agent HTTP API on `http://localhost:8000`
+- `frontend`: Next.js chat UI on `http://localhost:3000`
+
+The mounted paths are:
+
+```text
+./glpi_agent -> /app/glpi_agent
+./frontend   -> /app
+```
+
+Frontend changes reload through `next dev`. Backend agent changes are picked up on the next chat request because the backend runs the mounted Python agent code in a fresh subprocess during Docker development.
+
+Create and fill `.env` first:
+
+```bash
+cp .env.example .env
+```
+
+Then run:
+
+```bash
+./run.sh
+```
+
+Useful script commands:
+
+```bash
+./run.sh start     # start backend and frontend in the background
+./run.sh dev       # start in the foreground with live logs
+./run.sh stop      # stop containers
+./run.sh restart   # rebuild and restart
+./run.sh logs      # follow logs
+./run.sh status    # show running containers
+```
+
+Or directly:
+
+```bash
+docker compose up --build
+```
+
+The frontend calls the backend through:
+
+```text
+BACKEND_URL=http://backend:8000
+```
+
+You can test the backend health endpoint with:
+
+```bash
+curl http://localhost:8000/health
+```
 
 ## Dry Run Mode
 
@@ -230,22 +306,37 @@ The OpenRouter model can only choose from these tools:
 | `list_all_items` | Fetches paginated results up to a safe maximum when you ask for all items. |
 | `get_item` | Gets one GLPI item by type and ID. |
 | `search_items` | Searches GLPI items with a V2 RSQL filter. |
+| `list_tickets` | Lists tickets in a compact summary format. |
+| `get_ticket` | Gets one ticket by ID with useful context. |
 | `create_ticket` | Creates a ticket. |
 | `create_problem` | Creates a problem record for recurring/root-cause issues. |
 | `create_change` | Creates a change record for planned work. |
 | `create_asset` | Creates assets such as computers, printers, phones, monitors, network equipment, peripherals, or software. |
 | `create_knowledge_base_item` | Creates a knowledge base article/item. |
 | `update_item` | Updates fields on a GLPI item. |
-| `update_ticket_fields` | Updates urgency, impact, priority, category, location, or raw ticket fields. |
+| `update_ticket` | Updates ticket title, content, opening date, type, category, status, request source, urgency, impact, priority, total duration, external ID, location, actors, or raw fields. |
+| `update_ticket_fields` | Updates urgency, impact, priority, category, request source, location, total duration, external ID, or raw ticket fields. |
 | `update_ticket_status` | Updates a ticket status with names like `pending`, `solved`, or `closed`. |
+| `update_ticket_actors` | Updates requester, observer, and assigned user/group actors. |
 | `assign_ticket_user` | Assigns a ticket to a user/technician ID. |
 | `assign_ticket_group` | Assigns a ticket to a group ID. |
 | `add_ticket_followup` | Adds a follow-up/comment to a ticket. |
 | `add_ticket_task` | Adds a technical task/worklog to a ticket. |
 | `add_ticket_solution` | Adds a solution/resolution to a ticket and can mark it solved. |
+| `suggest_ticket_solution` | Fetches ticket context so the agent can draft a solution without saving it. |
 | `link_ticket_item` | Links an asset or GLPI item to a ticket. |
 | `delete_ticket` | Deletes a ticket after explicit confirmation for the exact ticket ID. |
 | `ticket_report` | Builds a summary report by status, priority, urgency, impact, and oldest open tickets. |
+
+Agent guards:
+
+- The agent is restricted to GLPI ticket/support work only.
+- Out-of-scope questions are refused with a short ticket-scope message.
+- GLPI data is treated as untrusted text, so instructions inside tickets are ignored.
+- Secrets, tokens, passwords, and authorization values are redacted from tool results and errors.
+- Ticket updates must use ticket-specific tools instead of generic item updates.
+- Delete, close, solve, and purge-style actions require the exact ticket ID in the user request.
+- The agent does not save a suggested solution unless the user explicitly asks to add or save it.
 
 Common item type mappings:
 
@@ -254,6 +345,9 @@ Ticket -> Assistance/Ticket
 Computer -> Assets/Computer
 User -> Administration/User
 Group -> Administration/Group
+ITILCategory -> Dropdowns/ITILCategory
+RequestType / RequestSource -> Dropdowns/RequestType
+Location -> Dropdowns/Location
 Printer -> Assets/Printer
 Software -> Assets/Software
 Problem -> Assistance/Problem
@@ -271,7 +365,19 @@ Get Administration/User 5.
 Ticket status names supported by the helper:
 
 ```text
-new, incoming, processing, assigned, planned, pending, waiting, solved, resolved, closed
+new, approval, processing assigned, processing planned, pending, solved, closed
+```
+
+Ticket type names supported by the helper:
+
+```text
+incident, request
+```
+
+Priority, urgency, and impact names supported by the helper:
+
+```text
+major, very high, high, medium, low, very low
 ```
 
 ## Examples To Try

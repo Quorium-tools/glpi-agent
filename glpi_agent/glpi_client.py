@@ -12,14 +12,18 @@ ITEMTYPE_ENDPOINTS = {
     "computer": "Assets/Computer",
     "entity": "Administration/Entity",
     "group": "Administration/Group",
+    "itilcategory": "Dropdowns/ITILCategory",
     "knowledgebase": "Tools/KnowbaseItem",
     "knowbaseitem": "Tools/KnowbaseItem",
+    "location": "Dropdowns/Location",
     "monitor": "Assets/Monitor",
     "networkequipment": "Assets/NetworkEquipment",
     "peripheral": "Assets/Peripheral",
     "phone": "Assets/Phone",
     "printer": "Assets/Printer",
     "problem": "Assistance/Problem",
+    "requestsource": "Dropdowns/RequestType",
+    "requesttype": "Dropdowns/RequestType",
     "software": "Assets/Software",
     "ticket": "Assistance/Ticket",
     "user": "Administration/User",
@@ -28,14 +32,39 @@ ITEMTYPE_ENDPOINTS = {
 TICKET_STATUS_CODES = {
     "new": 1,
     "incoming": 1,
+    "approval": 10,
+    "waiting approval": 10,
+    "waiting for approval": 10,
+    "pending approval": 10,
     "processing": 2,
     "assigned": 2,
+    "processing assigned": 2,
+    "processing (assigned)": 2,
     "planned": 3,
+    "processing planned": 3,
+    "processing (planned)": 3,
     "pending": 4,
     "waiting": 4,
     "solved": 5,
     "resolved": 5,
     "closed": 6,
+}
+
+TICKET_TYPE_CODES = {
+    "incident": 1,
+    "request": 2,
+}
+
+TICKET_LEVEL_CODES = {
+    "very low": 1,
+    "lowest": 1,
+    "low": 2,
+    "medium": 3,
+    "average": 3,
+    "high": 4,
+    "very high": 5,
+    "highest": 6,
+    "major": 6,
 }
 
 
@@ -149,11 +178,84 @@ class GlpiClient(AbstractContextManager["GlpiClient"]):
             {"force": force_purge},
         )
 
-    def create_ticket(self, title: str, content: str, priority: int | None = None) -> Any:
-        fields: dict[str, Any] = {"name": title, "content": content}
-        if priority is not None:
-            fields["priority"] = priority
-        return self.create_item("Ticket", fields)
+    def create_ticket(
+        self,
+        title: str,
+        content: str,
+        priority: int | str | None = None,
+        opening_date: str | None = None,
+        type: int | str | None = None,
+        category_id: int | None = None,
+        request_source_id: int | None = None,
+        urgency: int | str | None = None,
+        impact: int | str | None = None,
+        total_duration_minutes: int | None = None,
+        external_id: str | None = None,
+        requester_user_id: int | None = None,
+        observer_user_id: int | None = None,
+        assigned_user_id: int | None = None,
+        requester_group_id: int | None = None,
+        observer_group_id: int | None = None,
+        assigned_group_id: int | None = None,
+        fields: dict[str, Any] | None = None,
+    ) -> Any:
+        payload = self._build_ticket_payload(
+            title=title,
+            content=content,
+            priority=priority,
+            opening_date=opening_date,
+            type=type,
+            category_id=category_id,
+            request_source_id=request_source_id,
+            urgency=urgency,
+            impact=impact,
+            total_duration_minutes=total_duration_minutes,
+            external_id=external_id,
+            requester_user_id=requester_user_id,
+            observer_user_id=observer_user_id,
+            assigned_user_id=assigned_user_id,
+            requester_group_id=requester_group_id,
+            observer_group_id=observer_group_id,
+            assigned_group_id=assigned_group_id,
+            fields=fields,
+        )
+        return self.create_item("Ticket", payload)
+
+    def list_tickets(
+        self,
+        max_items: int = 50,
+        page_size: int = 50,
+        filter: str | None = None,
+        sort: str | None = None,
+        include_deleted: bool = False,
+    ) -> dict[str, Any]:
+        tickets = self.list_all_items("Ticket", max_items=max_items, page_size=page_size, filter=filter, sort=sort)
+        if not include_deleted:
+            tickets = [ticket for ticket in tickets if not (isinstance(ticket, dict) and ticket.get("is_deleted"))]
+        return {
+            "total_returned": len(tickets),
+            "tickets": [self._ticket_summary(ticket) for ticket in tickets if isinstance(ticket, dict)],
+            "format_instruction": "Answer with a short compact list. Deleted tickets are hidden unless include_deleted=true.",
+        }
+
+    def get_ticket(
+        self,
+        ticket_id: int,
+        expand_dropdowns: bool = True,
+        with_tickets: bool = False,
+        with_notes: bool = True,
+        with_logs: bool = False,
+        with_documents: bool = False,
+    ) -> Any:
+        return self.get_item(
+            "Ticket",
+            ticket_id,
+            expand_dropdowns=expand_dropdowns,
+            with_tickets=with_tickets,
+            with_notes=with_notes,
+            with_logs=with_logs,
+            with_documents=with_documents,
+        )
 
     def create_problem(self, title: str, content: str, priority: int | None = None) -> Any:
         fields: dict[str, Any] = {"name": title, "content": content}
@@ -187,23 +289,79 @@ class GlpiClient(AbstractContextManager["GlpiClient"]):
     def update_ticket_fields(
         self,
         ticket_id: int,
-        urgency: int | None = None,
-        impact: int | None = None,
-        priority: int | None = None,
+        urgency: int | str | None = None,
+        impact: int | str | None = None,
+        priority: int | str | None = None,
         category_id: int | None = None,
         location_id: int | None = None,
+        request_source_id: int | None = None,
+        total_duration_minutes: int | None = None,
+        external_id: str | None = None,
         fields: dict[str, Any] | None = None,
     ) -> Any:
         payload = dict(fields or {})
         for key, value in {
-            "urgency": urgency,
-            "impact": impact,
-            "priority": priority,
+            "urgency": self._ticket_level_code(urgency) if urgency is not None else None,
+            "impact": self._ticket_level_code(impact) if impact is not None else None,
+            "priority": self._ticket_level_code(priority) if priority is not None else None,
             "category": category_id,
             "location": location_id,
+            "request_type": request_source_id,
+            "actiontime": max(total_duration_minutes, 0) * 60 if total_duration_minutes is not None else None,
+            "external_id": external_id,
         }.items():
             if value is not None:
                 payload[key] = value
+        if not payload:
+            raise ValueError("No ticket fields were provided.")
+        return self.update_item("Ticket", ticket_id, payload)
+
+    def update_ticket(
+        self,
+        ticket_id: int,
+        title: str | None = None,
+        content: str | None = None,
+        status: int | str | None = None,
+        priority: int | str | None = None,
+        urgency: int | str | None = None,
+        impact: int | str | None = None,
+        opening_date: str | None = None,
+        type: int | str | None = None,
+        category_id: int | None = None,
+        location_id: int | None = None,
+        request_source_id: int | None = None,
+        total_duration_minutes: int | None = None,
+        external_id: str | None = None,
+        requester_user_id: int | None = None,
+        observer_user_id: int | None = None,
+        assigned_user_id: int | None = None,
+        requester_group_id: int | None = None,
+        observer_group_id: int | None = None,
+        assigned_group_id: int | None = None,
+        fields: dict[str, Any] | None = None,
+    ) -> Any:
+        payload = self._build_ticket_payload(
+            title=title,
+            content=content,
+            status=status,
+            priority=priority,
+            urgency=urgency,
+            impact=impact,
+            opening_date=opening_date,
+            type=type,
+            category_id=category_id,
+            location_id=location_id,
+            request_source_id=request_source_id,
+            total_duration_minutes=total_duration_minutes,
+            external_id=external_id,
+            requester_user_id=requester_user_id,
+            observer_user_id=observer_user_id,
+            assigned_user_id=assigned_user_id,
+            requester_group_id=requester_group_id,
+            observer_group_id=observer_group_id,
+            assigned_group_id=assigned_group_id,
+            fields=fields,
+        )
         if not payload:
             raise ValueError("No ticket fields were provided.")
         return self.update_item("Ticket", ticket_id, payload)
@@ -216,6 +374,30 @@ class GlpiClient(AbstractContextManager["GlpiClient"]):
 
     def assign_ticket_group(self, ticket_id: int, group_id: int) -> Any:
         return self.update_item("Ticket", ticket_id, {"group_assigned": group_id})
+
+    def update_ticket_actors(
+        self,
+        ticket_id: int,
+        requester_user_id: int | None = None,
+        observer_user_id: int | None = None,
+        assigned_user_id: int | None = None,
+        requester_group_id: int | None = None,
+        observer_group_id: int | None = None,
+        assigned_group_id: int | None = None,
+        fields: dict[str, Any] | None = None,
+    ) -> Any:
+        payload = self._build_ticket_payload(
+            requester_user_id=requester_user_id,
+            observer_user_id=observer_user_id,
+            assigned_user_id=assigned_user_id,
+            requester_group_id=requester_group_id,
+            observer_group_id=observer_group_id,
+            assigned_group_id=assigned_group_id,
+            fields=fields,
+        )
+        if not payload:
+            raise ValueError("No ticket actors were provided.")
+        return self.update_item("Ticket", ticket_id, payload)
 
     def delete_ticket(self, ticket_id: int, force_purge: bool = False, confirm: bool = False) -> Any:
         if not confirm:
@@ -261,6 +443,16 @@ class GlpiClient(AbstractContextManager["GlpiClient"]):
         if status is None:
             return result
         return {"solution": result, "status_update": self.update_ticket_status(ticket_id, status)}
+
+    def get_ticket_solution_context(self, ticket_id: int) -> Any:
+        ticket = self.get_ticket(ticket_id, expand_dropdowns=True, with_notes=True, with_logs=True, with_documents=True)
+        return {
+            "ticket": ticket,
+            "instruction": (
+                "Use this ticket context to suggest a practical support response. "
+                "Do not write a solution unless the user explicitly asks to add it."
+            ),
+        }
 
     def link_ticket_item(self, ticket_id: int, itemtype: str, item_id: int, fields: dict[str, Any] | None = None) -> Any:
         payload = {"itemtype": itemtype, "items_id": item_id, **(fields or {})}
@@ -314,9 +506,37 @@ class GlpiClient(AbstractContextManager["GlpiClient"]):
         if normalized in TICKET_STATUS_CODES:
             return TICKET_STATUS_CODES[normalized]
         raise ValueError(
-            "Unsupported ticket status. Use one of: new, processing, assigned, planned, "
-            "pending, solved, closed, or a GLPI status code from 1 to 6."
+            "Unsupported ticket status. Use one of: new, approval, processing assigned, "
+            "processing planned, pending, solved, closed, or a GLPI status code."
         )
+
+    @staticmethod
+    def _ticket_type_code(type_: int | str) -> int:
+        if isinstance(type_, int):
+            if type_ in {1, 2}:
+                return type_
+            raise ValueError("Ticket type code must be 1 for incident or 2 for request.")
+
+        normalized = type_.strip().lower().replace("-", " ").replace("_", " ")
+        normalized = " ".join(normalized.split())
+        if normalized in TICKET_TYPE_CODES:
+            return TICKET_TYPE_CODES[normalized]
+        raise ValueError("Unsupported ticket type. Use incident, request, 1, or 2.")
+
+    @staticmethod
+    def _ticket_level_code(level: int | str) -> int:
+        if isinstance(level, int):
+            if 1 <= level <= 6:
+                return level
+            raise ValueError("Ticket urgency, impact, and priority must be between 1 and 6.")
+
+        normalized = level.strip().lower().replace("-", " ").replace("_", " ")
+        normalized = " ".join(normalized.split())
+        if normalized in TICKET_LEVEL_CODES:
+            return TICKET_LEVEL_CODES[normalized]
+        if normalized.isdigit():
+            return GlpiClient._ticket_level_code(int(normalized))
+        raise ValueError("Unsupported level. Use very low, low, medium, high, very high, major, or a code from 1 to 6.")
 
     @staticmethod
     def _count_scalar(items: list[Any], key: str) -> dict[str, int]:
@@ -359,6 +579,71 @@ class GlpiClient(AbstractContextManager["GlpiClient"]):
                 }
             )
         return sorted(open_tickets, key=lambda item: str(item.get("date_creation") or ""))[:limit]
+
+    @staticmethod
+    def _ticket_summary(ticket: dict[str, Any]) -> dict[str, Any]:
+        status = ticket.get("status")
+        if isinstance(status, dict):
+            status_label = status.get("name") or status.get("id")
+        else:
+            status_label = status
+        return {
+            "id": ticket.get("id"),
+            "title": ticket.get("name"),
+            "status": status_label,
+            "priority": ticket.get("priority"),
+            "date": ticket.get("date") or ticket.get("date_creation"),
+        }
+
+    @classmethod
+    def _build_ticket_payload(
+        cls,
+        title: str | None = None,
+        content: str | None = None,
+        status: int | str | None = None,
+        priority: int | str | None = None,
+        urgency: int | str | None = None,
+        impact: int | str | None = None,
+        opening_date: str | None = None,
+        type: int | str | None = None,
+        category_id: int | None = None,
+        location_id: int | None = None,
+        request_source_id: int | None = None,
+        total_duration_minutes: int | None = None,
+        external_id: str | None = None,
+        requester_user_id: int | None = None,
+        observer_user_id: int | None = None,
+        assigned_user_id: int | None = None,
+        requester_group_id: int | None = None,
+        observer_group_id: int | None = None,
+        assigned_group_id: int | None = None,
+        fields: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        payload = dict(fields or {})
+        for key, value in {
+            "name": title,
+            "content": content,
+            "date": opening_date,
+            "type": cls._ticket_type_code(type) if type is not None else None,
+            "category": category_id,
+            "location": location_id,
+            "status": cls._ticket_status_code(status) if status is not None else None,
+            "request_type": request_source_id,
+            "urgency": cls._ticket_level_code(urgency) if urgency is not None else None,
+            "impact": cls._ticket_level_code(impact) if impact is not None else None,
+            "priority": cls._ticket_level_code(priority) if priority is not None else None,
+            "actiontime": max(total_duration_minutes, 0) * 60 if total_duration_minutes is not None else None,
+            "external_id": external_id,
+            "user_requester": requester_user_id,
+            "user_observer": observer_user_id,
+            "user_assigned": assigned_user_id,
+            "group_requester": requester_group_id,
+            "group_observer": observer_group_id,
+            "group_assigned": assigned_group_id,
+        }.items():
+            if value is not None:
+                payload[key] = value
+        return payload
 
     @staticmethod
     def _range_to_pagination(range_: str) -> tuple[int, int]:

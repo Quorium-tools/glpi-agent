@@ -10,6 +10,7 @@ type ChatMessage = {
 
 const starterPrompts = [
   "List all tickets I have.",
+  "Suggest a solution for ticket 1.",
   "Create a ticket task for ticket 1: checked printer queue, duration 15 minutes.",
   "Generate a ticket report grouped by status and priority.",
   "Search printers with name like accounting.",
@@ -21,11 +22,10 @@ export default function Home() {
       id: "welcome",
       role: "assistant",
       content:
-        "Hi. Ask me to list tickets, search assets, create tickets, add follow-ups, or update ticket status.",
+        "Hi. Ask me to create, list, read, update, delete, or solve tickets. I can also suggest support solutions before saving them.",
     },
   ]);
   const [input, setInput] = useState("");
-  const [dryRun, setDryRun] = useState(true);
   const [model, setModel] = useState("");
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -50,7 +50,8 @@ export default function Home() {
       role: "user",
       content: prompt,
     };
-    setMessages((current) => [...current, userMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
 
     try {
       const response = await fetch("/api/chat", {
@@ -58,7 +59,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: prompt,
-          dryRun,
+          messages: nextMessages.slice(-8).map(({ role, content }) => ({ role, content })),
           model: model.trim() || undefined,
         }),
       });
@@ -103,18 +104,6 @@ export default function Home() {
         </div>
 
         <div className="settings-panel">
-          <label className="switch-row">
-            <span>
-              <strong>Dry run</strong>
-              <small>Preview write actions before changing GLPI.</small>
-            </span>
-            <input
-              type="checkbox"
-              checked={dryRun}
-              onChange={(event) => setDryRun(event.target.checked)}
-            />
-          </label>
-
           <label className="field-label">
             Model override
             <input
@@ -139,7 +128,7 @@ export default function Home() {
         <header className="chat-header">
           <div>
             <strong>Agent Chat</strong>
-            <span>{dryRun ? "Dry-run writes enabled" : "Live GLPI writes enabled"}</span>
+            <span>Live GLPI writes enabled</span>
           </div>
           <div className={`status-pill ${isSending ? "busy" : ""}`}>
             <span />

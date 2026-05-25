@@ -8,9 +8,32 @@ const repoRoot = path.resolve(process.cwd(), "..");
 
 type ChatRequest = {
   message?: string;
-  dryRun?: boolean;
+  messages?: Array<{
+    role?: "assistant" | "user";
+    content?: string;
+  }>;
   model?: string;
 };
+
+function buildContextualMessage(body: ChatRequest, message: string): string {
+  const history = Array.isArray(body.messages) ? body.messages : [];
+  const cleaned = history
+    .filter((item) => item.role && typeof item.content === "string" && item.content.trim())
+    .slice(-8)
+    .map((item) => `${item.role === "assistant" ? "Assistant" : "User"}: ${item.content!.trim()}`);
+
+  if (cleaned.length <= 1) {
+    return message;
+  }
+
+  return [
+    "Conversation context from the web chat:",
+    ...cleaned,
+    "",
+    "Use the context above to resolve short confirmations like \"yes create it\" or \"do it\".",
+    `Current user message: ${message}`,
+  ].join("\n");
+}
 
 export async function POST(request: NextRequest) {
   let body: ChatRequest;
@@ -26,14 +49,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Message is required." }, { status: 400 });
   }
 
-  const args = ["-m", "glpi_agent.cli"];
-  if (body.dryRun) {
-    args.push("--dry-run");
+  const contextualMessage = buildContextualMessage(body, message);
+
+  if (process.env.BACKEND_URL) {
+    try {
+      const response = await fetch(`${process.env.BACKEND_URL.replace(/\/$/, "")}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: contextualMessage,
+          dryRun: false,
+          model: body.model?.trim() || undefined,
+        }),
+      });
+
+      const data = await response.json();
+      return NextResponse.json(data, { status: response.status });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Unknown error";
+      return NextResponse.json(
+        {
+          error: "The GLPI backend is unreachable.",
+          detail,
+        },
+        { status: 502 },
+      );
+    }
   }
+
+  const args = ["-m", "glpi_agent.cli"];
   if (body.model?.trim()) {
     args.push("--model", body.model.trim());
   }
-  args.push(message);
+  args.push(contextualMessage);
 
   try {
     const { stdout, stderr } = await execFileAsync("python", args, {

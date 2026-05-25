@@ -1,0 +1,9 @@
+.git
+.env
+frontend/.next
+frontend/node_modules
+glpi_agent/__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.log
