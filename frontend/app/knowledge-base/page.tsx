@@ -12,24 +12,27 @@ type ChatMessage = {
 };
 
 const starterPrompts = [
-  "List all tickets I have.",
-  "Suggest a solution for ticket 1.",
-  "Create a ticket task for ticket 1: checked printer queue, duration 15 minutes.",
-  "Generate a ticket report grouped by status and priority.",
-  "Search printers with name like accounting.",
+  "How do I reset my password?",
+  "How do I connect to the VPN?",
+  "My printer is not working.",
+  "I received a suspicious email.",
+  "How do I access SEDIT?",
+  "How do I request an account for a new employee?",
 ];
 
-export default function Home() {
+export default function KnowledgeBasePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
       role: "assistant",
       content:
-        "Hi. Ask me to create, list, read, update, delete, or solve tickets. I can also suggest support solutions before saving them.",
+        "Hi! I'm the self-service IT support assistant for CD08. Ask me about passwords, VPN, printers, email, SEDIT, or report a security incident. I'll answer directly or open a ticket for you.",
     },
   ]);
   const [input, setInput] = useState("");
+  const [dryRun, setDryRun] = useState(false);
   const [model, setModel] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -53,18 +56,18 @@ export default function Home() {
       role: "user",
       content: prompt,
     };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
+    setMessages((current) => [...current, userMessage]);
 
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agent: "admin",
+          agent: "knowledge-base",
           message: prompt,
-          messages: nextMessages.slice(-8).map(({ role, content }) => ({ role, content })),
+          dryRun,
           model: model.trim() || undefined,
+          userEmail: userEmail.trim() || undefined,
         }),
       });
       const data = await response.json();
@@ -102,18 +105,40 @@ export default function Home() {
     <main className="app-shell">
       <aside className="sidebar">
         <div>
-          <div className="brand-mark">G</div>
-          <h1>GLPI Agent</h1>
-          <p>OpenRouter-powered assistant connected to your GLPI API V2 tools.</p>
+          <div className="brand-mark">KB</div>
+          <h1>Knowledge Base Agent</h1>
+          <p>Self-service IT support for Finance, HR, Legal, and other non-IT departments.</p>
         </div>
 
         <div className="settings-panel">
+          <label className="field-label">
+            Your email (optional)
+            <input
+              type="email"
+              value={userEmail}
+              onChange={(event) => setUserEmail(event.target.value)}
+              placeholder="firstname.lastname@cd08.fr"
+            />
+          </label>
+
+          <label className="switch-row">
+            <span>
+              <strong>Dry run</strong>
+              <small>Preview ticket creation without sending to GLPI.</small>
+            </span>
+            <input
+              type="checkbox"
+              checked={dryRun}
+              onChange={(event) => setDryRun(event.target.checked)}
+            />
+          </label>
+
           <label className="field-label">
             Model override
             <input
               value={model}
               onChange={(event) => setModel(event.target.value)}
-              placeholder="openai/gpt-4o-mini"
+              placeholder="openai/google/gemma-4-e4b"
             />
           </label>
         </div>
@@ -128,15 +153,15 @@ export default function Home() {
         </div>
 
         <div style={{ marginTop: "auto", paddingTop: "1rem", fontSize: "0.8rem", opacity: 0.6 }}>
-          <Link href="/knowledge-base">Switch to Knowledge Base Agent</Link>
+          <Link href="/">Switch to IT Admin Agent</Link>
         </div>
       </aside>
 
       <section className="chat-panel">
         <header className="chat-header">
           <div>
-            <strong>Agent Chat</strong>
-            <span>Live GLPI writes enabled</span>
+            <strong>Knowledge Base Agent — Self-service</strong>
+            <span>{dryRun ? "Dry-run ticket mode" : "Live ticket creation enabled"}</span>
           </div>
           <div className={`status-pill ${isSending ? "busy" : ""}`}>
             <span />
@@ -183,7 +208,7 @@ export default function Home() {
                 void sendMessage(input);
               }
             }}
-            placeholder="Ask: can u list all tickets i have"
+            placeholder="Ask: how do I reset my password?"
             rows={2}
           />
           <button type="submit" disabled={!canSend}>

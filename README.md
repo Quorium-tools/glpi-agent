@@ -4,6 +4,11 @@ Command-line assistant that uses an OpenRouter model to read and update GLPI thr
 
 OpenRouter is connected in this project. The LLM receives your prompt, decides which GLPI tool to use, and the local Python code executes the real GLPI API call.
 
+| Agent | Audience | Route |
+|-------|----------|-------|
+| **IT Admin Agent** | IT technicians — full GLPI access | `/` |
+| **Knowledge Base Agent** | Non-IT staff (Finance, HR, Legal) — self-service tickets | `/knowledge-base` |
+
 ## Quick Start
 
 Create a local environment file:
@@ -34,18 +39,24 @@ Check the active config without printing secrets:
 
 ```bash
 python -m glpi_agent.cli --show-config
+
+python -m glpi_agent.cli_knowledge_base_agent --show-config
 ```
 
 Run one prompt:
 
 ```bash
 python -m glpi_agent.cli "Show me the 10 newest tickets with their ID, title, status, and priority."
+
+python -m glpi_agent.cli_knowledge_base_agent "How do I connect to VPN?"
 ```
 
 Start interactive mode:
 
 ```bash
 python -m glpi_agent.cli
+
+python -m glpi_agent.cli_knowledge_base_agent
 ```
 
 ## What You Need
@@ -58,18 +69,19 @@ python -m glpi_agent.cli
 
 ## How It Works
 
+### Request flow (both agents)
 The flow is:
 
-1. `python -m glpi_agent.cli` starts the CLI.
+1. `python -m glpi_agent.cli` / `python -m glpi_agent.cli_knowledge_base_agent` - starts the CLI.
 2. `glpi_agent/config.py` loads `.env`.
-3. `glpi_agent/cli.py` creates the OpenRouter client.
+3. `glpi_agent/cli.py` / `glpi_agent/cli_knowledge_base_agent.py`creates the OpenRouter client.
 4. `glpi_agent/openrouter_client.py` sends the prompt and tool definitions to OpenRouter.
 5. OpenRouter returns either a normal answer or a tool call.
-6. `glpi_agent/agent.py` validates and executes the requested local tool.
+6. `glpi_agent/agent.py` / `glpi_agent/knowledge_base_agent.py` validates and executes the requested local tool.
 7. `glpi_agent/glpi_client.py` authenticates with GLPI OAuth and calls GLPI API V2.
 8. The GLPI result is sent back to OpenRouter so it can answer in normal language.
 
-The LLM does not call GLPI directly. It can only request the tools exposed in `glpi_agent/agent.py`.
+The LLM does not call GLPI directly. It can only request the tools exposed in `glpi_agent/agent.py` / `glpi_agent/knowledge_base_agent.py` .
 
 ## Project Files
 
@@ -79,6 +91,8 @@ glpi_agent/
   config.py             Loads .env and validates required settings.
   openrouter_client.py  Sends chat/tool requests to OpenRouter.
   agent.py              System prompt, tools, and tool-call loop.
+  cli_knowledge_base_agent.py     Agent 2 entrypoint — same structure as cli.py
+  knowledge_base_agent.py         Agent 2 — system prompt, 6 tool schemas, local KB fiches
   glpi_client.py        GLPI OAuth, item paths, ticket status mapping, API calls.
   http_json.py          Small urllib JSON/form request helper.
 .env.example            Environment variable template.
@@ -104,6 +118,8 @@ Override the model for one run:
 
 ```bash
 python -m glpi_agent.cli --model anthropic/claude-3.5-sonnet "Show me the 5 newest tickets"
+
+python -m glpi_agent.cli_knowledge_base_agent --model anthropic/claude-3.5-sonnet "How do I reset my password?"
 ```
 
 ## GLPI OAuth Setup
@@ -134,6 +150,10 @@ Example ticket route:
 ```text
 {GLPI_BASE_URL}/api.php/v2.3/Assistance/Ticket
 ```
+## Agent 1 — IT Admin Agent
+
+Full GLPI access for IT technicians. Translates natural language into 20+ GLPI API V2 operations.
+
 
 ## CLI Commands
 
@@ -496,11 +516,62 @@ Permanent purge is stronger than normal delete. Only use it when you really want
 python -m glpi_agent.cli --dry-run "Permanently purge ticket 12. I confirm permanently purging ticket 12."
 ```
 
+## Agent 2 — Knowledge Base Agent
+
+Self-service IT support for non-IT departments. Handles three tiers automatically:
+
+| Tier | Trigger | Action |
+|------|---------|--------|
+| **1 — KB Answer** | Issue matches a local fiche or solved ticket (confidence ≥ 0.8) | Returns solution directly |
+| **2 — Ticket** | No match found | Creates GLPI ticket immediately |
+| **3 — Emergency** | Message contains `URGENT`, `CRITICAL`, or `EMERGENCY` | Returns Help Desk phone number |
+
+IT staff are rejected automatically if their email prefix matches known IT patterns (`tech.`, `admin.`, `it.`, `dsi.`, etc.).
+
+### CLI
+
+```bash
+# One-shot
+python -m glpi_agent.cli_knowledge_base_agent "How do I connect to VPN?"
+
+# With user email (enables IT staff check)
+python -m glpi_agent.cli_knowledge_base_agent --user-email "jean.dupont@cd08.fr" "I can't access SEDIT."
+
+# Dry-run (preview ticket creation)
+python -m glpi_agent.cli_knowledge_base_agent --dry-run "My keyboard is not working."
+
+# Override model
+python -m glpi_agent.cli_knowledge_base_agent --model openai/gpt-4o "How do I reset my password?"
+
+# Interactive REPL
+python -m glpi_agent.cli_knowledge_base_agent
+```
+
+### Built-in Knowledge Base (Fiches CD08)
+
+Seven fiches are embedded in `knowledge_base_agent.py` and searched locally on every query:
+
+| ID | Topic |
+|----|-------|
+| FICHE-001 | Windows password reset — self-service portal |
+| FICHE-002 | VPN connection — Cisco AnyConnect |
+| FICHE-003 | Outlook access from outside the office |
+| FICHE-004 | Network printer problems |
+| FICHE-005 | New user account creation request |
+| FICHE-006 | SEDIT financial software access |
+| FICHE-007 | Reporting a security incident |
+
+The agent also searches GLPI solved and closed tickets using the keywords extracted from the user's message.
+
+To add a new fiche: append an entry to `LOCAL_KB` in `knowledge_base_agent.py` with `id`, `title`, `keywords`, `solution`, and `source` fields.
+
+---
+
 More examples are in `EXAMPLES.md`.
 
 ## Feature Coverage
 
-The agent now covers these GLPI workflows through API tools:
+### Agent 1 — IT Admin
 
 - Ticket lifecycle: create, list, search, update status, update fields, follow up, add task, add solution, delete with confirmation.
 - Assignment: assign tickets to a user ID or group ID.
@@ -509,6 +580,20 @@ The agent now covers these GLPI workflows through API tools:
 - Knowledge base: search/list/create knowledge base items, depending on your GLPI endpoint availability.
 - Users and groups: search/list users and groups before assignment.
 - Reporting: summarize tickets by status, priority, urgency, impact, and oldest open tickets.
+
+### Agent 2 — Knowledge Base (6 tools)
+
+- **`search_knowledge_base`** — searches 7 embedded local fiches + GLPI solved/closed tickets; returns confidence-ranked results
+
+- **`create_basic_ticket`** — creates a ticket with title, description, and priority; supports dry-run
+
+- **`get_support_contact`** — returns Help Desk phone and hours for URGENT/CRITICAL/EMERGENCY queries
+
+- **`verify_non_it_user`** — rejects IT staff by email prefix or GLPI department before serving the user
+
+- **`get_ticket_by_id`** — fetches ticket details and solution text from the Timeline endpoint
+
+- **`log_unfound_query`** — logs queries that found no KB match, for Help Desk review
 
 GLPI V2 exposes exact endpoint schemas through your server's Swagger docs:
 

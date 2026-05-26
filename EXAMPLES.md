@@ -2,6 +2,8 @@
 
 Use these after your `.env` is configured.
 
+# Agent 1 — IT Admin Agent
+
 ## Check Configuration
 
 ```bash
@@ -177,9 +179,148 @@ Add a follow-up to ticket 12 saying the issue is being investigated.
 Set ticket 12 status to pending.
 ```
 
+
+# Agent 2 — Knowledge Base Agent
+
+## Check Configuration
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent --show-config
+```
+
+## Level 1 — KB Answer (local fiches + solved tickets)
+
+These should return a direct solution without creating a ticket:
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "How do I reset my Windows password?"
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "I forgot my password and can't log in."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "How do I connect to the VPN?"
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "Cisco AnyConnect credentials rejected."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "How do I access my emails from home?"
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "What is the webmail address?"
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "My printer is not printing."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "Print job stuck in queue."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "How do I request an account for a new employee?"
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "How do I access SEDIT?"
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "SEDIT shows a blank page."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "I received a suspicious email with an attachment."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "The spacebar on my keyboard is not working."
+```
+
+## Level 2 — Ticket Creation (no KB match)
+
+These should create a GLPI ticket immediately:
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent --dry-run "My monitor screen is flickering."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent --dry-run "My mouse is not working."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent --dry-run "The projector in meeting room 3 is broken."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent --dry-run "Software crashes when I open large Excel files."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent --dry-run "My second monitor is not detected."
+```
+
+## Level 3 — Emergency (Help Desk phone)
+
+These should return the support contact number:
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "URGENT: system is completely down."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "CRITICAL: I can't access payroll and it's due today."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent "EMERGENCY: all my files have disappeared."
+```
+
+## With User Email
+
+Passing `--user-email` enables the IT staff rejection check:
+
+```bash
+# Non-IT user — proceeds normally
+python -m glpi_agent.cli_knowledge_base_agent --user-email "marie.dubois@cd08.fr" "My laptop screen is cracked."
+```
+
+```bash
+# IT staff email prefix — rejected
+python -m glpi_agent.cli_knowledge_base_agent --user-email "tech.admin@cd08.fr" "Reset my password."
+```
+
+## With Dry-Run
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent --dry-run "My keyboard is broken."
+```
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent --dry-run "I need a new mouse for my workstation."
+```
+
+## Interactive REPL
+
+```bash
+python -m glpi_agent.cli_knowledge_base_agent
+```
+
+---
+
 ## Useful Prompt Patterns
 
 ```text
+# Agent 1
+
 Search [item type] with name like [text].
 Get [item type] [id] and summarize it.
 Show the newest [number] [item type].
@@ -196,4 +337,10 @@ Create a problem titled [title] with content [content].
 Create a change titled [title] with content [content].
 Create a knowledge base article titled [title] with content [content].
 Delete ticket [id]. I confirm deleting ticket [id].
+
+# Agent 2
+
+How do I [password/vpn/printer/email/sedit/account/security]?
+[describe issue] — agent decides: KB answer, ticket, or emergency contact.
+URGENT/CRITICAL/EMERGENCY: [describe crisis] — returns Help Desk phone.
 ```
