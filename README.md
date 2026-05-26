@@ -210,8 +210,8 @@ npm run dev
 
 | URL | Agent | Features |
 |-----|-------|----------|
-| `http://localhost:3000` | IT Admin Agent | Model override, quick prompts |
-| `http://localhost:3000/knowledge-base` | Knowledge Base Agent | Model override, quick prompts |
+| `http://localhost:3003` | IT Admin Agent | Model override, quick prompts |
+| `http://localhost:3003/knowledge-base` | Knowledge Base Agent | Model override, quick prompts |
 
 ```text
 http://localhost:3003
@@ -238,9 +238,9 @@ Both UIs send requests to `/api/chat` with an `agent` field (`"admin"` or `"know
 
 The compose setup starts three services with live-mounted source code:
 
-- `backend`: IT Admin Agent HTTP API on `http://localhost:8000` (`glpi_agent.server`)
-- `backend-kb`: Knowledge Base Agent HTTP API on `http://localhost:8004` (`glpi_agent.server_kb`)
-- `frontend`: Next.js chat UI on `http://localhost:3000`
+- `ticket-agent`: Ticket/Admin Agent HTTP API on `http://localhost:8003`
+- `knowledge-agent`: Knowledge Base Agent HTTP API on `http://localhost:8004`
+- `frontend`: Next.js chat UI on `http://localhost:3003`
 
 The mounted paths are:
 
@@ -266,12 +266,14 @@ Then run:
 Useful script commands:
 
 ```bash
-./run.sh start     # start backend and frontend in the background
+./run.sh start     # start all agents and frontend in the background
 ./run.sh dev       # start in the foreground with live logs
 ./run.sh stop      # stop containers
 ./run.sh restart   # rebuild and restart
 ./run.sh logs      # follow logs
 ./run.sh status    # show running containers
+./run.sh ticket    # follow Ticket Agent logs
+./run.sh knowledge # follow Knowledge Base Agent logs
 ```
 
 Or directly:
@@ -283,8 +285,8 @@ docker compose up --build
 The frontend routes requests to each backend:
 
 ```text
-BACKEND_URL=http://backend:8003
-BACKEND_KB_URL=http://backend-kb:8004  # Knowledge Base Agent
+BACKEND_URL=http://ticket-agent:8003
+BACKEND_KB_URL=http://knowledge-agent:8004
 ```
 
 Health endpoints:
@@ -427,12 +429,6 @@ Delete examples:
 python -m glpi_agent.cli "Delete ticket 12. I confirm deleting ticket 12."
 ```
 
-Permanent purge is stronger than normal delete. Only use it when you really want GLPI to purge the ticket:
-
-```bash
-python -m glpi_agent.cli --dry-run "Permanently purge ticket 12. I confirm permanently purging ticket 12."
-```
-
 ## Agent 2 — Knowledge Base Agent
 
 Self-service IT support for non-IT departments. Handles three tiers automatically:
@@ -453,9 +449,6 @@ python -m glpi_agent.cli_knowledge_base_agent "How do I connect to VPN?"
 
 # With user email (enables IT staff check)
 python -m glpi_agent.cli_knowledge_base_agent --user-email "jean.dupont@cd08.fr" "I can't access SEDIT."
-
-# Dry-run (preview ticket creation)
-python -m glpi_agent.cli_knowledge_base_agent --dry-run "My keyboard is not working."
 
 # Override model
 python -m glpi_agent.cli_knowledge_base_agent --model openai/gpt-4o "How do I reset my password?"
@@ -502,7 +495,7 @@ More examples are in `EXAMPLES.md`.
 
 - **`search_knowledge_base`** — searches 7 embedded local fiches + GLPI solved/closed tickets; returns confidence-ranked results
 
-- **`create_basic_ticket`** — creates a ticket with title, description, and priority; supports dry-run
+- **`create_basic_ticket`** — creates a ticket with title, description, and priority
 
 - **`get_support_contact`** — returns Help Desk phone and hours for URGENT/CRITICAL/EMERGENCY queries
 

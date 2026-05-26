@@ -8,16 +8,25 @@ usage() {
 Usage: ./run.sh [command]
 
 Commands:
-  start      Build if needed and start backend + frontend in the background
-  dev        Build if needed and start backend + frontend in the foreground
+  start      Build if needed and start all services in the background
+  dev        Build if needed and start all services in the foreground
   stop       Stop and remove the running containers
   restart    Stop, rebuild, and start again in the background
   build      Build the Docker images
-  logs       Follow logs from both services
+  logs       Follow logs from all services
   status     Show container status
-  backend    Follow backend logs only
+  ticket     Follow Ticket Agent logs only
+  knowledge  Follow Knowledge Base Agent logs only
+  backend    Alias for ticket
+  kb         Alias for knowledge
   frontend   Follow frontend logs only
 EOF
+}
+
+print_urls() {
+  echo "Frontend:          http://localhost:3003"
+  echo "Ticket backend:    http://localhost:8003"
+  echo "Knowledge backend: http://localhost:8004"
 }
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -39,8 +48,7 @@ fi
 case "$COMMAND" in
   start)
     docker compose up --build -d
-    echo "Frontend: http://localhost:3003"
-    echo "Backend:  http://localhost:8003"
+    print_urls
     ;;
   dev)
     docker compose up --build
@@ -51,8 +59,7 @@ case "$COMMAND" in
   restart)
     docker compose down
     docker compose up --build -d
-    echo "Frontend: http://localhost:3003"
-    echo "Backend:  http://localhost:8003"
+    print_urls
     ;;
   build)
     docker compose build
@@ -63,8 +70,11 @@ case "$COMMAND" in
   status)
     docker compose ps
     ;;
-  backend)
-    docker compose logs -f backend
+  ticket|backend)
+    docker compose logs -f ticket-agent
+    ;;
+  knowledge|kb)
+    docker compose logs -f knowledge-agent
     ;;
   frontend)
     docker compose logs -f frontend

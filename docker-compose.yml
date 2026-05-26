@@ -1,5 +1,5 @@
 services:
-  backend:
+  ticket-agent:
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -15,7 +15,7 @@ services:
     ports:
       - "8003:8003"
 
-  backend-kb:
+  knowledge-agent:
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -36,8 +36,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     environment:
-      BACKEND_URL: http://backend:8003
-      BACKEND_KB_URL: http://backend-kb:8004
+      BACKEND_URL: http://ticket-agent:8003
+      BACKEND_KB_URL: http://knowledge-agent:8004
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
     command: npm run dev -- --hostname 0.0.0.0 --port 3003
@@ -48,8 +48,8 @@ services:
     ports:
       - "3003:3003"
     depends_on:
-      - backend
-      - backend-kb
+      - ticket-agent
+      - knowledge-agent
 
 volumes:
   frontend_node_modules:
