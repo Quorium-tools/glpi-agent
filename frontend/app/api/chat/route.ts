@@ -14,6 +14,7 @@ type ChatRequest = {
     content?: string;
   }>;
   model?: string;
+  userEmail?: string;
 };
 
 function buildContextualMessage(body: ChatRequest, message: string): string {
@@ -79,6 +80,12 @@ export async function POST(request: NextRequest) {
         { status: 502 },
       );
     }
+  const isKb = body.agent === "knowledge-base";
+  const module = isKb ? "glpi_agent.cli_knowledge_base_agent" : "glpi_agent.cli";
+
+  const args = ["-m", module];
+  if (body.dryRun) {
+    args.push("--dry-run");
   }
 
   const module = isKb ? "glpi_agent.cli_knowledge_base_agent" : "glpi_agent.cli";
@@ -87,6 +94,10 @@ export async function POST(request: NextRequest) {
     args.push("--model", body.model.trim());
   }
   args.push(contextualMessage);
+  if (isKb && body.userEmail?.trim()) {
+    args.push("--user-email", body.userEmail.trim());
+  }
+  args.push(message);
 
   try {
     const { stdout, stderr } = await execFileAsync("python", args, {
