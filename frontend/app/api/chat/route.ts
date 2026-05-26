@@ -7,9 +7,11 @@ const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(process.cwd(), "..");
 
 type ChatRequest = {
+  agent?: "admin" | "knowledge-base";
   message?: string;
   dryRun?: boolean;
   model?: string;
+  userEmail?: string;
 };
 
 export async function POST(request: NextRequest) {
@@ -26,12 +28,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Message is required." }, { status: 400 });
   }
 
-  const args = ["-m", "glpi_agent.cli"];
+  const isKb = body.agent === "knowledge-base";
+  const module = isKb ? "glpi_agent.cli_knowledge_base_agent" : "glpi_agent.cli";
+
+  const args = ["-m", module];
   if (body.dryRun) {
     args.push("--dry-run");
   }
   if (body.model?.trim()) {
     args.push("--model", body.model.trim());
+  }
+  if (isKb && body.userEmail?.trim()) {
+    args.push("--user-email", body.userEmail.trim());
   }
   args.push(message);
 
@@ -50,7 +58,7 @@ export async function POST(request: NextRequest) {
     const detail = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       {
-        error: "The GLPI agent failed.",
+        error: isKb ? "The Knowledge Base agent failed." : "The GLPI agent failed.",
         detail,
       },
       { status: 500 },
