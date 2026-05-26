@@ -4,21 +4,23 @@ import json
 import os
 import subprocess
 import sys
-from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from .agent import GlpiAgent
 from .config import Settings
 from .glpi_client import GlpiClient
 from .openrouter_client import OpenRouterClient
 
 
-def run_agent(message: str, dry_run: bool = False, model: str | None = None) -> str:
+def _agent_type() -> str:
+    return os.getenv("GLPI_AGENT_TYPE", "admin").strip().lower()
+
+
+def run_agent(message: str, model: str | None = None) -> str:
+    agent_type = _agent_type()
+
     if os.getenv("GLPI_AGENT_DEV_SUBPROCESS", "").strip().lower() in {"1", "true", "yes", "on"}:
-        args = [sys.executable, "-m", "glpi_agent.cli"]
-        if dry_run:
-            args.append("--dry-run")
+        args = [sys.executable, "-m", "glpi_agent.cli_knowledge_base_agent" if agent_type == "knowledge-base" else "glpi_agent.cli"]
         if model:
             args.extend(["--model", model])
         args.append(message)
@@ -30,13 +32,15 @@ def run_agent(message: str, dry_run: bool = False, model: str | None = None) -> 
         return completed.stdout
 
     settings = Settings.from_env()
-    if dry_run:
-        settings = replace(settings, dry_run=True)
     if model:
         settings = replace(settings, openrouter_model=model)
 
     llm = OpenRouterClient(settings.openrouter_api_key, settings.openrouter_model)
     with GlpiClient(settings) as glpi:
+        if agent_type == "knowledge-base":
+            from .knowledge_base_agent import KbAgent
+            return KbAgent(llm, glpi).run(message)
+        from .agent import GlpiAgent
         return GlpiAgent(llm, glpi).run(message)
 
 
@@ -45,7 +49,7 @@ class GlpiAgentHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if self.path == "/health":
-            self._send_json({"status": "ok"})
+            self._send_json({"status": "ok", "agent": _agent_type()})
             return
         self._send_json({"error": "Not found."}, status=404)
 
@@ -61,14 +65,13 @@ class GlpiAgentHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": "Message is required."}, status=400)
                 return
 
-            dry_run = bool(payload.get("dryRun"))
             model = str(payload.get("model", "")).strip() or None
-            answer = run_agent(message, dry_run=dry_run, model=model)
+            answer = run_agent(message, model=model)
             self._send_json({"answer": answer.strip() or "The agent finished without a text response."})
         except json.JSONDecodeError:
             self._send_json({"error": "Invalid JSON request."}, status=400)
         except Exception as exc:
-            self._send_json({"error": "The GLPI agent failed.", "detail": str(exc)}, status=500)
+            self._send_json({"error": "The agent failed.", "detail": str(exc)}, status=500)
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"{self.address_string()} - {fmt % args}")
@@ -95,8 +98,9 @@ class GlpiAgentHandler(BaseHTTPRequestHandler):
 def main() -> None:
     host = os.getenv("GLPI_AGENT_HOST", "0.0.0.0")
     port = int(os.getenv("GLPI_AGENT_PORT", "8000"))
+    agent_type = _agent_type()
     server = ThreadingHTTPServer((host, port), GlpiAgentHandler)
-    print(f"GLPI agent backend listening on http://{host}:{port}")
+    print(f"GLPI agent backend [{agent_type}] listening on http://{host}:{port}")
     server.serve_forever()
 
 

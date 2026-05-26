@@ -7,6 +7,7 @@ const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(process.cwd(), "..");
 
 type ChatRequest = {
+  agent?: "admin" | "knowledge-base";
   message?: string;
   messages?: Array<{
     role?: "assistant" | "user";
@@ -49,27 +50,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Message is required." }, { status: 400 });
   }
 
+  const isKb = body.agent === "knowledge-base";
   const contextualMessage = buildContextualMessage(body, message);
 
-  if (process.env.BACKEND_URL) {
+  const backendUrl = isKb
+    ? (process.env.BACKEND_KB_URL || process.env.BACKEND_URL)
+    : process.env.BACKEND_URL;
+
+  if (backendUrl) {
     try {
-      const response = await fetch(`${process.env.BACKEND_URL.replace(/\/$/, "")}/chat`, {
+      const response = await fetch(`${backendUrl.replace(/\/$/, "")}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: contextualMessage,
-          dryRun: false,
           model: body.model?.trim() || undefined,
         }),
       });
-
       const data = await response.json();
       return NextResponse.json(data, { status: response.status });
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown error";
       return NextResponse.json(
         {
-          error: "The GLPI backend is unreachable.",
+          error: isKb ? "The Knowledge Base backend is unreachable." : "The GLPI backend is unreachable.",
           detail,
         },
         { status: 502 },
@@ -77,7 +81,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const args = ["-m", "glpi_agent.cli"];
+  const module = isKb ? "glpi_agent.cli_knowledge_base_agent" : "glpi_agent.cli";
+  const args = ["-m", module];
   if (body.model?.trim()) {
     args.push("--model", body.model.trim());
   }
@@ -98,7 +103,7 @@ export async function POST(request: NextRequest) {
     const detail = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       {
-        error: "The GLPI agent failed.",
+        error: isKb ? "The Knowledge Base agent failed." : "The GLPI agent failed.",
         detail,
       },
       { status: 500 },
