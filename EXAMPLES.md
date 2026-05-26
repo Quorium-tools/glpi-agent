@@ -71,71 +71,71 @@ python -m glpi_agent.cli "Search knowledge base articles with name like VPN."
 These are safer for testing because `--dry-run` prevents `POST`, `PATCH`, and `DELETE` requests from being sent to GLPI.
 
 ```bash
-python -m glpi_agent.cli --dry-run "Create a ticket titled 'Printer blocked in accounting' with content 'The accounting printer is blocked and users cannot print invoices.' Priority high."
+python -m glpi_agent.cli  "Create a ticket titled 'Printer blocked in accounting' with content 'The accounting printer is blocked and users cannot print invoices.' Priority high."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Add a follow-up to ticket 12 saying: The technician checked the switch port and found no physical issue."
+python -m glpi_agent.cli  "Add a follow-up to ticket 12 saying: The technician checked the switch port and found no physical issue."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Set ticket 12 status to pending."
+python -m glpi_agent.cli  "Set ticket 12 status to pending."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Mark ticket 12 as solved."
+python -m glpi_agent.cli  "Mark ticket 12 as solved."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Update ticket 12 title to 'VPN access issue for remote employee'."
+python -m glpi_agent.cli  "Update ticket 12 title to 'VPN access issue for remote employee'."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Add a task to ticket 12: checked the switch port and printer queue, duration 30 minutes."
+python -m glpi_agent.cli  "Add a task to ticket 12: checked the switch port and printer queue, duration 30 minutes."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Resolve ticket 12 with solution: replaced toner and printed a test page."
+python -m glpi_agent.cli  "Resolve ticket 12 with solution: replaced toner and printed a test page."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Set ticket 12 urgency to 5, impact to 4, and priority to 5."
+python -m glpi_agent.cli  "Set ticket 12 urgency to 5, impact to 4, and priority to 5."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Assign ticket 12 to user ID 2."
+python -m glpi_agent.cli  "Assign ticket 12 to user ID 2."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Assign ticket 12 to group ID 3."
+python -m glpi_agent.cli  "Assign ticket 12 to group ID 3."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Create a printer asset named HP Accounting Printer with serial number ACC-HP-001."
+python -m glpi_agent.cli  "Create a printer asset named HP Accounting Printer with serial number ACC-HP-001."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Link ticket 12 to printer ID 4."
+python -m glpi_agent.cli  "Link ticket 12 to printer ID 4."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Create a problem titled 'Repeated VPN outages' with content 'Remote users report repeated VPN disconnects every morning.'"
+python -m glpi_agent.cli  "Create a problem titled 'Repeated VPN outages' with content 'Remote users report repeated VPN disconnects every morning.'"
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Create a change titled 'Upgrade office firewall firmware' with content 'Planned firmware upgrade to address VPN instability.'"
+python -m glpi_agent.cli  "Create a change titled 'Upgrade office firewall firmware' with content 'Planned firmware upgrade to address VPN instability.'"
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Create a knowledge base article titled 'How to reset VPN access' with content 'Steps for first-line support to reset VPN access.'"
+python -m glpi_agent.cli  "Create a knowledge base article titled 'How to reset VPN access' with content 'Steps for first-line support to reset VPN access.'"
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Delete ticket 12. I confirm deleting ticket 12."
+python -m glpi_agent.cli  "Delete ticket 12. I confirm deleting ticket 12."
 ```
 
 ```bash
-python -m glpi_agent.cli --dry-run "Permanently purge ticket 12. I confirm permanently purging ticket 12."
+python -m glpi_agent.cli  "Permanently purge ticket 12. I confirm permanently purging ticket 12."
 ```
 
 ## Real Write Prompts
@@ -249,23 +249,23 @@ python -m glpi_agent.cli_knowledge_base_agent "The spacebar on my keyboard is no
 These should create a GLPI ticket immediately:
 
 ```bash
-python -m glpi_agent.cli_knowledge_base_agent --dry-run "My monitor screen is flickering."
+python -m glpi_agent.cli_knowledge_base_agent  "My monitor screen is flickering."
 ```
 
 ```bash
-python -m glpi_agent.cli_knowledge_base_agent --dry-run "My mouse is not working."
+python -m glpi_agent.cli_knowledge_base_agent  "My mouse is not working."
 ```
 
 ```bash
-python -m glpi_agent.cli_knowledge_base_agent --dry-run "The projector in meeting room 3 is broken."
+python -m glpi_agent.cli_knowledge_base_agent  "The projector in meeting room 3 is broken."
 ```
 
 ```bash
-python -m glpi_agent.cli_knowledge_base_agent --dry-run "Software crashes when I open large Excel files."
+python -m glpi_agent.cli_knowledge_base_agent  "Software crashes when I open large Excel files."
 ```
 
 ```bash
-python -m glpi_agent.cli_knowledge_base_agent --dry-run "My second monitor is not detected."
+python -m glpi_agent.cli_knowledge_base_agent  "My second monitor is not detected."
 ```
 
 ## Level 3 — Emergency (Help Desk phone)
@@ -301,11 +301,11 @@ python -m glpi_agent.cli_knowledge_base_agent --user-email "tech.admin@cd08.fr" 
 ## With Dry-Run
 
 ```bash
-python -m glpi_agent.cli_knowledge_base_agent --dry-run "My keyboard is broken."
+python -m glpi_agent.cli_knowledge_base_agent  "My keyboard is broken."
 ```
 
 ```bash
-python -m glpi_agent.cli_knowledge_base_agent --dry-run "I need a new mouse for my workstation."
+python -m glpi_agent.cli_knowledge_base_agent  "I need a new mouse for my workstation."
 ```
 
 ## Interactive REPL
