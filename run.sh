@@ -39,8 +39,8 @@ fi
 case "$COMMAND" in
   start)
     docker compose up --build -d
-    echo "Frontend: http://localhost:3000"
-    echo "Backend:  http://localhost:8000"
+    echo "Frontend: http://localhost:3003"
+    echo "Backend:  http://localhost:8003"
     ;;
   dev)
     docker compose up --build
@@ -51,8 +51,8 @@ case "$COMMAND" in
   restart)
     docker compose down
     docker compose up --build -d
-    echo "Frontend: http://localhost:3000"
-    echo "Backend:  http://localhost:8000"
+    echo "Frontend: http://localhost:3003"
+    echo "Backend:  http://localhost:8003"
     ;;
   build)
     docker compose build

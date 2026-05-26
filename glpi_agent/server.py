@@ -94,7 +94,7 @@ class GlpiAgentHandler(BaseHTTPRequestHandler):
 
 def main() -> None:
     host = os.getenv("GLPI_AGENT_HOST", "0.0.0.0")
-    port = int(os.getenv("GLPI_AGENT_PORT", "8000"))
+    port = int(os.getenv("GLPI_AGENT_PORT", "8003"))
     server = ThreadingHTTPServer((host, port), GlpiAgentHandler)
     print(f"GLPI agent backend listening on http://{host}:{port}")
     server.serve_forever()

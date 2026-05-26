@@ -26,8 +26,6 @@ GLPI_OAUTH_CLIENT_SECRET=client_secret_from_glpi
 GLPI_OAUTH_SCOPE=api
 GLPI_USERNAME=your_glpi_username
 GLPI_PASSWORD=your_glpi_password
-
-GLPI_AGENT_DRY_RUN=false
 ```
 
 Check the active config without printing secrets:
@@ -149,12 +147,6 @@ Run one prompt:
 python -m glpi_agent.cli "List the supported GLPI item types."
 ```
 
-Run with dry-run writes:
-
-```bash
-python -m glpi_agent.cli --dry-run "Create a ticket for a broken printer"
-```
-
 Ticket CRUD examples:
 
 ```bash
@@ -201,7 +193,7 @@ npm run dev
 Then open:
 
 ```text
-http://localhost:3000
+http://localhost:3003
 ```
 
 The web UI includes:
@@ -224,8 +216,8 @@ from the project root, so it reuses the same `.env` file as the CLI.
 
 The compose setup starts two development services with live-mounted source code:
 
-- `backend`: Python GLPI agent HTTP API on `http://localhost:8000`
-- `frontend`: Next.js chat UI on `http://localhost:3000`
+- `backend`: Python GLPI agent HTTP API on `http://localhost:8003`
+- `frontend`: Next.js chat UI on `http://localhost:3003`
 
 The mounted paths are:
 
@@ -268,32 +260,14 @@ docker compose up --build
 The frontend calls the backend through:
 
 ```text
-BACKEND_URL=http://backend:8000
+BACKEND_URL=http://backend:8003
 ```
 
 You can test the backend health endpoint with:
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8003/health
 ```
-
-## Dry Run Mode
-
-Use dry run before testing prompts that create or update GLPI data:
-
-```bash
-python -m glpi_agent.cli --dry-run "Set ticket 12 status to solved."
-```
-
-Or with an environment variable:
-
-```bash
-GLPI_AGENT_DRY_RUN=true python -m glpi_agent.cli "Create a ticket for a broken printer"
-```
-
-Dry run returns the method, URL, and payload instead of sending write requests to GLPI.
-
-Read operations still call GLPI.
 
 ## Available Tools
 
@@ -408,65 +382,7 @@ python -m glpi_agent.cli "Search computers with name like laptop and show ID, na
 python -m glpi_agent.cli "Generate a ticket report grouped by status, priority, urgency, and impact."
 ```
 
-Dry-run write examples:
-
-```bash
-python -m glpi_agent.cli --dry-run "Create a ticket titled 'Printer blocked in accounting' with content 'The accounting printer is blocked and users cannot print invoices.' Priority high."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Add a follow-up to ticket 12 saying: The technician checked the switch port and found no physical issue."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Set ticket 12 status to pending."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Mark ticket 12 as solved."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Add a task to ticket 12: checked the switch port and printer queue, duration 30 minutes."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Resolve ticket 12 with solution: replaced toner and printed a test page."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Set ticket 12 urgency to 5, impact to 4, and priority to 5."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Assign ticket 12 to user ID 2."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Assign ticket 12 to group ID 3."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Create a printer asset named HP Accounting Printer with serial number ACC-HP-001."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Link ticket 12 to printer ID 4."
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Create a problem titled 'Repeated VPN outages' with content 'Remote users report repeated VPN disconnects every morning.'"
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Create a change titled 'Upgrade office firewall firmware' with content 'Planned firmware upgrade to address VPN instability.'"
-```
-
-```bash
-python -m glpi_agent.cli --dry-run "Create a knowledge base article titled 'How to reset VPN access' with content 'Steps for first-line support to reset VPN access.'"
-```
-
-Real write examples:
+Write examples:
 
 ```bash
 python -m glpi_agent.cli "Create a low priority ticket titled 'Keyboard replacement request' with content 'User needs a replacement keyboard for workstation HR-04.'"
@@ -483,17 +399,7 @@ python -m glpi_agent.cli "Set ticket 12 status to solved."
 Delete examples:
 
 ```bash
-python -m glpi_agent.cli --dry-run "Delete ticket 12. I confirm deleting ticket 12."
-```
-
-```bash
 python -m glpi_agent.cli "Delete ticket 12. I confirm deleting ticket 12."
-```
-
-Permanent purge is stronger than normal delete. Only use it when you really want GLPI to purge the ticket:
-
-```bash
-python -m glpi_agent.cli --dry-run "Permanently purge ticket 12. I confirm permanently purging ticket 12."
 ```
 
 More examples are in `EXAMPLES.md`.
@@ -516,7 +422,7 @@ GLPI V2 exposes exact endpoint schemas through your server's Swagger docs:
 {GLPI_BASE_URL}/api.php/doc
 ```
 
-If a tool returns a path/schema error for your GLPI Network Cloud version, test the same prompt with `--dry-run` and compare the generated URL/payload with your `/api.php/doc` schema.
+If a tool returns a path/schema error for your GLPI Network Cloud version, compare the requested action with your `/api.php/doc` schema.
 
 ## Troubleshooting
 
@@ -557,7 +463,6 @@ Use a supported friendly name like `Ticket`, `Computer`, or `User`, or pass a fu
 - The model is restricted to the local tools listed in `agent.py`.
 - The model is instructed not to invent ticket IDs or statuses.
 - Ticket deletion requires explicit confirmation for the exact ticket ID.
-- Use `--dry-run` before testing create/update prompts.
 
 ## GLPI Docs
 

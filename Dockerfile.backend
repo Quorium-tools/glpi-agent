@@ -6,8 +6,8 @@ COPY glpi_agent ./glpi_agent
 
 ENV PYTHONUNBUFFERED=1
 ENV GLPI_AGENT_HOST=0.0.0.0
-ENV GLPI_AGENT_PORT=8000
+ENV GLPI_AGENT_PORT=8003
 
-EXPOSE 8000
+EXPOSE 8003
 
 CMD ["python", "-m", "glpi_agent.server"]

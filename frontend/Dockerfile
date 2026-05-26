@@ -8,8 +8,8 @@ RUN npm ci
 COPY . .
 
 ENV NODE_ENV=development
-ENV PORT=3000
+ENV PORT=3003
 
-EXPOSE 3000
+EXPOSE 3003
 
-CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3003"]
