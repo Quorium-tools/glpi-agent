@@ -11,16 +11,33 @@ if [ -f "${SCRIPT_DIR}/.env" ]; then
   set +o allexport
 fi
 
-COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
+ENVIRONMENT="${NODE_ENV:-production}"
+ENVIRONMENT="$(printf '%s' "${ENVIRONMENT}" | tr '[:upper:]' '[:lower:]')"
+
+if [[ "${ENVIRONMENT}" == "development" ]]; then
+  PROFILE="dev"
+elif [[ "${ENVIRONMENT}" == "test" ]]; then
+  PROFILE="test"
+else
+  PROFILE="prod"
+fi
+
+echo "Running app in ${ENVIRONMENT} mode (profile: ${PROFILE})..."
+
+COMPOSE_FILE="${SCRIPT_DIR}/docker-compose-${PROFILE}.yml"
 
 if [ ! -f "${COMPOSE_FILE}" ]; then
-  echo "Compose file docker-compose.yml not found in ${SCRIPT_DIR}." >&2
+  echo "Compose file docker-compose-${PROFILE}.yml not found in ${SCRIPT_DIR}." >&2
+  echo "Check that NODE_ENV maps to an existing profile (development->dev, test->test, production->prod)." >&2
   exit 1
 fi
 
 usage() {
   cat <<'USAGE'
 Usage: ./docker.sh <command> [args...]
+
+Environment:
+  NODE_ENV=development|test|production   Select compose profile (default: production)
 
 Commands:
   build   Build and start services (detached)

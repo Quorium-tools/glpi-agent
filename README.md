@@ -7,7 +7,7 @@ OpenRouter is connected in this project. The LLM receives your prompt, decides w
 | Agent | Audience | Route |
 |-------|----------|-------|
 | **IT Admin Agent** | IT technicians — full GLPI access | `/` |
-| **Knowledge Base Agent** | Non-IT staff (Finance, HR, Legal) — self-service tickets | `/knowledge-base` |
+| **Departments Support Agent** | Non-IT staff (Finance, HR, Legal) — self-service tickets | `/departments-support-agent` |
 
 ## Quick Start
 
@@ -36,25 +36,25 @@ GLPI_PASSWORD=your_glpi_password
 Check the active config without printing secrets:
 
 ```bash
-python -m glpi_agent.cli --show-config
+python -m help_desk_agent.cli --show-config
 
-python -m glpi_agent.cli_knowledge_base_agent --show-config
+python -m departments_support_agent.cli --show-config
 ```
 
 Run one prompt:
 
 ```bash
-python -m glpi_agent.cli "Show me the 10 newest tickets with their ID, title, status, and priority."
+python -m help_desk_agent.cli "Show me the 10 newest tickets with their ID, title, status, and priority."
 
-python -m glpi_agent.cli_knowledge_base_agent "How do I connect to VPN?"
+python -m departments_support_agent.cli "How do I connect to VPN?"
 ```
 
 Start interactive mode:
 
 ```bash
-python -m glpi_agent.cli
+python -m help_desk_agent.cli
 
-python -m glpi_agent.cli_knowledge_base_agent
+python -m departments_support_agent.cli
 ```
 
 ## What You Need
@@ -70,9 +70,9 @@ python -m glpi_agent.cli_knowledge_base_agent
 ### Request flow (both agents)
 The flow is:
 
-1. `python -m glpi_agent.cli` / `python -m glpi_agent.cli_knowledge_base_agent` - starts the CLI.
+1. `python -m help_desk_agent.cli` / `python -m departments_support_agent.cli` - starts the CLI.
 2. `glpi_agent/config.py` loads `.env`.
-3. `glpi_agent/cli.py` / `glpi_agent/cli_knowledge_base_agent.py`creates the OpenRouter client.
+3. `glpi_agent/cli.py` / `glpi_agent/cli_departments_support_agent.py`creates the OpenRouter client.
 4. `glpi_agent/openrouter_client.py` sends the prompt and tool definitions to OpenRouter.
 5. OpenRouter returns either a normal answer or a tool call.
 6. `glpi_agent/agent.py` / `glpi_agent/knowledge_base_agent.py` validates and executes the requested local tool.
@@ -89,7 +89,7 @@ glpi_agent/
   config.py             Loads .env and validates required settings.
   openrouter_client.py  Sends chat/tool requests to OpenRouter.
   agent.py              System prompt, tools, and tool-call loop.
-  cli_knowledge_base_agent.py     Agent 2 entrypoint — same structure as cli.py
+  cli_departments_support_agent.py     Agent 2 entrypoint — same structure as cli.py
   knowledge_base_agent.py         Agent 2 — system prompt, 6 tool schemas, local KB fiches
   glpi_client.py        GLPI OAuth, item paths, ticket status mapping, API calls.
   http_json.py          Small urllib JSON/form request helper.
@@ -115,9 +115,9 @@ OPENROUTER_MODEL=openai/gpt-4o-mini
 Override the model for one run:
 
 ```bash
-python -m glpi_agent.cli --model anthropic/claude-3.5-sonnet "Show me the 5 newest tickets"
+python -m help_desk_agent.cli --model anthropic/claude-3.5-sonnet "Show me the 5 newest tickets"
 
-python -m glpi_agent.cli_knowledge_base_agent --model anthropic/claude-3.5-sonnet "How do I reset my password?"
+python -m departments_support_agent.cli --model anthropic/claude-3.5-sonnet "How do I reset my password?"
 ```
 
 ## GLPI OAuth Setup
@@ -158,52 +158,52 @@ Full GLPI access for IT technicians. Translates natural language into 20+ GLPI A
 Show config:
 
 ```bash
-python -m glpi_agent.cli --show-config
+python -m help_desk_agent.cli --show-config
 ```
 
 Run one prompt:
 
 ```bash
-python -m glpi_agent.cli "List the supported GLPI item types."
+python -m help_desk_agent.cli "List the supported GLPI item types."
 ```
 
 Ticket CRUD examples:
 
 ```bash
-python -m glpi_agent.cli "Create a fake test ticket titled 'Fix Docker dependencies' and generate harmless test details."
-python -m glpi_agent.cli "List my newest tickets."
-python -m glpi_agent.cli "Show ticket 12."
-python -m glpi_agent.cli "Update ticket 12 priority to high and status to processing."
-python -m glpi_agent.cli "Set ticket 12 opening date to 2026-05-19 13:13:23, type incident, request source ID 1, urgency medium, impact medium, priority low, total duration 30 minutes, and external ID EXT-12."
-python -m glpi_agent.cli "Set ticket 12 requester user ID 4, observer user ID 8, and assigned user ID 2."
-python -m glpi_agent.cli "Delete ticket 12. I confirm deleting ticket 12."
+python -m help_desk_agent.cli "Create a fake test ticket titled 'Fix Docker dependencies' and generate harmless test details."
+python -m help_desk_agent.cli "List my newest tickets."
+python -m help_desk_agent.cli "Show ticket 12."
+python -m help_desk_agent.cli "Update ticket 12 priority to high and status to processing."
+python -m help_desk_agent.cli "Set ticket 12 opening date to 2026-05-19 13:13:23, type incident, request source ID 1, urgency medium, impact medium, priority low, total duration 30 minutes, and external ID EXT-12."
+python -m help_desk_agent.cli "Set ticket 12 requester user ID 4, observer user ID 8, and assigned user ID 2."
+python -m help_desk_agent.cli "Delete ticket 12. I confirm deleting ticket 12."
 ```
 
 Support suggestion examples:
 
 ```bash
-python -m glpi_agent.cli "Suggest a solution for ticket 12."
-python -m glpi_agent.cli "Add that solution to ticket 12 and mark it solved."
+python -m help_desk_agent.cli "Suggest a solution for ticket 12."
+python -m help_desk_agent.cli "Add that solution to ticket 12 and mark it solved."
 ```
 
 Run with a different model:
 
 ```bash
-python -m glpi_agent.cli --model openai/gpt-4o-mini "Show me the 5 newest tickets"
+python -m help_desk_agent.cli --model openai/gpt-4o-mini "Show me the 5 newest tickets"
 ```
 
 Interactive mode:
 
 ```bash
-python -m glpi_agent.cli
+python -m help_desk_agent.cli
 ```
 
-## Web Chat Frontend
+## Web Chat UI
 
-A Next.js chat UI in `frontend/` serves both agents from a single API route (`frontend/app/api/chat/route.ts`).
+A Next.js chat UI in `web/` serves both agents from a single API route (`web/app/api/chat/route.ts`).
 
 ```bash
-cd frontend
+cd web
 npm install
 npm run dev
 ```
@@ -211,7 +211,7 @@ npm run dev
 | URL | Agent | Features |
 |-----|-------|----------|
 | `http://localhost:3005` | IT Admin Agent | Model override, quick prompts |
-| `http://localhost:3005/knowledge-base` | Knowledge Base Agent | Model override, quick prompts |
+| `http://localhost:3005/departments-support-agent` | Departments Support Agent | Model override, quick prompts |
 
 ```text
 http://localhost:3005
@@ -225,31 +225,32 @@ The web UI includes:
 - an optional OpenRouter model override
 - Enter-to-send support
 
-The frontend API route runs:
+The web API route runs:
 
 ```bash
-python -m glpi_agent.cli
+python -m help_desk_agent.cli
 ```
 
 from the project root, so it reuses the same `.env` file as the CLI.
-Both UIs send requests to `/api/chat` with an `agent` field (`"admin"` or `"knowledge-base"`). The route dispatches to the correct Python CLI or Docker backend automatically.
+Both UIs send requests to `/api/chat` with an `agent` field (`"admin"` or `"departments-support-agent"`). The route dispatches to the correct Python CLI or Docker backend automatically.
 
 ## Run With Docker Compose
 
 The compose setup starts three services with live-mounted source code:
 
 - `glpi-ticket-agent`: Ticket/Admin Agent HTTP API on internal Docker DNS `http://glpi-ticket-agent:8004`
-- `glpi-knowledge-agent`: Knowledge Base Agent HTTP API on internal Docker DNS `http://glpi-knowledge-agent:8005`
-- `glpi-agent-frontend`: Next.js chat UI on internal Docker DNS `http://glpi-agent-frontend:3005` (expose via reverse proxy)
+- `glpi-departments-support-agent`: Departments Support Agent HTTP API on internal Docker DNS `http://glpi-departments-support-agent:8005`
+- `glpi-agent-web`: Next.js chat UI on internal Docker DNS `http://glpi-agent-web:3005` (expose via reverse proxy)
 
 The mounted paths are:
 
 ```text
-./glpi_agent -> /app/glpi_agent
-./frontend   -> /app
+./help-desk-agent -> /app/help_desk_agent
+./departments-support-agent -> /app/departments_support_agent
+./web   -> /app
 ```
 
-Frontend changes reload through `next dev`. Backend changes are picked up on the next request because both backends run the mounted Python code in a fresh subprocess during development.
+Web changes reload through `next dev`. Backend changes are picked up on the next request because both backends run the mounted Python code in a fresh subprocess during development.
 
 Create and fill `.env` first:
 
@@ -266,14 +267,14 @@ Then run:
 Useful script commands:
 
 ```bash
-./run.sh start     # start all agents and frontend in the background
+./run.sh start     # start all agents and web in the background
 ./run.sh dev       # start in the foreground with live logs
 ./run.sh stop      # stop containers
 ./run.sh restart   # rebuild and restart
 ./run.sh logs      # follow logs
 ./run.sh status    # show running containers
 ./run.sh ticket    # follow Ticket Agent logs
-./run.sh knowledge # follow Knowledge Base Agent logs
+./run.sh knowledge # follow Departments Support Agent logs
 ```
 
 Or directly:
@@ -282,18 +283,18 @@ Or directly:
 docker compose up --build
 ```
 
-The frontend routes requests to each backend:
+The web service routes requests to each backend:
 
 ```text
 BACKEND_URL=http://glpi-ticket-agent:8004
-BACKEND_KB_URL=http://glpi-knowledge-agent:8005
+BACKEND_KB_URL=http://glpi-departments-support-agent:8005
 ```
 
 Health endpoints (from inside the Docker network):
 
 ```bash
 curl http://glpi-ticket-agent:8004/health
-curl http://glpi-knowledge-agent:8005/health   # Knowledge Base Agent
+curl http://glpi-departments-support-agent:8005/health   # Departments Support Agent
 ```
 
 ## Available Tools
@@ -386,50 +387,50 @@ major, very high, high, medium, low, very low
 Safe read-only examples:
 
 ```bash
-python -m glpi_agent.cli "What can you do with GLPI?"
+python -m help_desk_agent.cli "What can you do with GLPI?"
 ```
 
 ```bash
-python -m glpi_agent.cli "List the supported GLPI item types."
+python -m help_desk_agent.cli "List the supported GLPI item types."
 ```
 
 ```bash
-python -m glpi_agent.cli "Show me the 10 newest tickets with their ID, title, status, and priority."
+python -m help_desk_agent.cli "Show me the 10 newest tickets with their ID, title, status, and priority."
 ```
 
 ```bash
-python -m glpi_agent.cli "Get ticket 12 and summarize the issue, requester, status, and latest notes if available."
+python -m help_desk_agent.cli "Get ticket 12 and summarize the issue, requester, status, and latest notes if available."
 ```
 
 ```bash
-python -m glpi_agent.cli "Search computers with name like laptop and show ID, name, serial number, and entity."
+python -m help_desk_agent.cli "Search computers with name like laptop and show ID, name, serial number, and entity."
 ```
 
 ```bash
-python -m glpi_agent.cli "Generate a ticket report grouped by status, priority, urgency, and impact."
+python -m help_desk_agent.cli "Generate a ticket report grouped by status, priority, urgency, and impact."
 ```
 
 Write examples:
 
 ```bash
-python -m glpi_agent.cli "Create a low priority ticket titled 'Keyboard replacement request' with content 'User needs a replacement keyboard for workstation HR-04.'"
+python -m help_desk_agent.cli "Create a low priority ticket titled 'Keyboard replacement request' with content 'User needs a replacement keyboard for workstation HR-04.'"
 ```
 
 ```bash
-python -m glpi_agent.cli "Add a follow-up to ticket 12 saying: Waiting for user confirmation after password reset."
+python -m help_desk_agent.cli "Add a follow-up to ticket 12 saying: Waiting for user confirmation after password reset."
 ```
 
 ```bash
-python -m glpi_agent.cli "Set ticket 12 status to solved."
+python -m help_desk_agent.cli "Set ticket 12 status to solved."
 ```
 
 Delete examples:
 
 ```bash
-python -m glpi_agent.cli "Delete ticket 12. I confirm deleting ticket 12."
+python -m help_desk_agent.cli "Delete ticket 12. I confirm deleting ticket 12."
 ```
 
-## Agent 2 — Knowledge Base Agent
+## Agent 2 — Departments Support Agent
 
 Self-service IT support for non-IT departments. Handles three tiers automatically:
 
@@ -445,16 +446,16 @@ IT staff are rejected automatically if their email prefix matches known IT patte
 
 ```bash
 # One-shot
-python -m glpi_agent.cli_knowledge_base_agent "How do I connect to VPN?"
+python -m departments_support_agent.cli "How do I connect to VPN?"
 
 # With user email (enables IT staff check)
-python -m glpi_agent.cli_knowledge_base_agent --user-email "jean.dupont@cd08.fr" "I can't access SEDIT."
+python -m departments_support_agent.cli --user-email "jean.dupont@cd08.fr" "I can't access SEDIT."
 
 # Override model
-python -m glpi_agent.cli_knowledge_base_agent --model openai/gpt-4o "How do I reset my password?"
+python -m departments_support_agent.cli --model openai/gpt-4o "How do I reset my password?"
 
 # Interactive REPL
-python -m glpi_agent.cli_knowledge_base_agent
+python -m departments_support_agent.cli
 ```
 
 ### Built-in Knowledge Base (Fiches CD08)
