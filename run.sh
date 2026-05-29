@@ -24,9 +24,9 @@ EOF
 }
 
 print_urls() {
-  echo "Ticket backend:    http://localhost:8004"
-  echo "Frontend:          http://localhost:3005"
-  echo "Knowledge backend: http://localhost:8005"
+  echo "Frontend (internal):          http://glpi-agent-frontend:3005"
+  echo "Ticket backend (internal):    http://glpi-ticket-agent:8004"
+  echo "Knowledge backend (internal): http://glpi-knowledge-agent:8005"
 }
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -71,13 +71,13 @@ case "$COMMAND" in
     docker compose ps
     ;;
   ticket|backend)
-    docker compose logs -f ticket-agent
+    docker compose logs -f glpi-ticket-agent
     ;;
   knowledge|kb)
-    docker compose logs -f knowledge-agent
+    docker compose logs -f glpi-knowledge-agent
     ;;
   frontend)
-    docker compose logs -f frontend
+    docker compose logs -f glpi-agent-frontend
     ;;
   help|--help|-h)
     usage

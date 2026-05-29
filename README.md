@@ -238,9 +238,9 @@ Both UIs send requests to `/api/chat` with an `agent` field (`"admin"` or `"know
 
 The compose setup starts three services with live-mounted source code:
 
-- `ticket-agent`: Ticket/Admin Agent HTTP API on `http://localhost:8004`
-- `knowledge-agent`: Knowledge Base Agent HTTP API on `http://localhost:8005`
-- `frontend`: Next.js chat UI on `http://localhost:3005`
+- `glpi-ticket-agent`: Ticket/Admin Agent HTTP API on internal Docker DNS `http://glpi-ticket-agent:8004`
+- `glpi-knowledge-agent`: Knowledge Base Agent HTTP API on internal Docker DNS `http://glpi-knowledge-agent:8005`
+- `glpi-agent-frontend`: Next.js chat UI on internal Docker DNS `http://glpi-agent-frontend:3005` (expose via reverse proxy)
 
 The mounted paths are:
 
@@ -285,15 +285,15 @@ docker compose up --build
 The frontend routes requests to each backend:
 
 ```text
-BACKEND_URL=http://ticket-agent:8004
-BACKEND_KB_URL=http://knowledge-agent:8005
+BACKEND_URL=http://glpi-ticket-agent:8004
+BACKEND_KB_URL=http://glpi-knowledge-agent:8005
 ```
 
-Health endpoints:
+Health endpoints (from inside the Docker network):
 
 ```bash
-curl http://localhost:8004/health
-curl http://localhost:8005/health   # Knowledge Base Agent
+curl http://glpi-ticket-agent:8004/health
+curl http://glpi-knowledge-agent:8005/health   # Knowledge Base Agent
 ```
 
 ## Available Tools
