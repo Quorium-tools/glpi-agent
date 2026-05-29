@@ -24,9 +24,9 @@ EOF
 }
 
 print_urls() {
-  echo "Frontend:          http://localhost:3003"
-  echo "Ticket backend:    http://localhost:8003"
-  echo "Knowledge backend: http://localhost:8004"
+  echo "Ticket backend:    http://localhost:8004"
+  echo "Frontend:          http://localhost:3005"
+  echo "Knowledge backend: http://localhost:8005"
 }
 
 if ! command -v docker >/dev/null 2>&1; then

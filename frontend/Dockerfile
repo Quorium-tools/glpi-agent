@@ -8,8 +8,8 @@ RUN npm install
 COPY . .
 
 ENV NODE_ENV=development
-ENV PORT=3003
+ENV PORT=3005
 
-EXPOSE 3003
+EXPOSE 3005
 
-CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3003"]
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3005"]
