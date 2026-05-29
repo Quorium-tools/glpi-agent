@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from json import JSONDecodeError
+from pathlib import Path
 from typing import Any, Callable
 
 from clients.glpi_client import GlpiClient
@@ -16,173 +17,62 @@ _GENERIC_WORDS = {
     "able", "please", "when", "what", "where", "getting", "keeps",
 }
 
-# ── Local knowledge base (fiches documentaires CD08) ─────────────────────────
+_CREATE_CONFIRM_KEYWORDS = {
+    "yes",
+    "yes create it",
+    "create it",
+    "create ticket",
+    "open ticket",
+    "ok create",
+    "please create",
+}
 
-LOCAL_KB: list[dict[str, Any]] = [
-    {
-        "id": "FICHE-001",
-        "title": "Réinitialisation de mot de passe Windows",
-        "keywords": [
-            "mot de passe", "password", "réinitialisation", "reset", "session",
-            "connexion", "identifiant", "oublié", "account", "locked", "login",
-            "log in", "sign in", "windows", "forgot", "bloqué", "credentials", "username",
-        ],
-        "solution": (
-            "Procédure de réinitialisation via le portail self-service :\n"
-            "1. Ouvrez un navigateur depuis un autre poste ou votre téléphone.\n"
-            "2. Rendez-vous sur : https://selfservice.cd08.fr\n"
-            "3. Cliquez sur « Mot de passe oublié ».\n"
-            "4. Saisissez votre identifiant (format : prenom.nom).\n"
-            "5. Choisissez la méthode de vérification : SMS ou email de récupération.\n"
-            "6. Entrez le code reçu.\n"
-            "7. Choisissez un nouveau mot de passe (12 caractères minimum, majuscule + chiffre + symbole).\n"
-            "8. Validez. Votre session sera débloquée dans les 2 minutes.\n\n"
-            "Règles mot de passe CD08 : 12 caractères min, majuscule + minuscule + chiffre + symbole, "
-            "ne peut pas reprendre les 5 derniers mots de passe, expiration tous les 90 jours.\n\n"
-            "Si le self-service ne fonctionne pas : appelez le Help Desk au 📞 03 24 XX XX XX"
-        ),
-        "source": "FICHE-001 — Réinitialisation de mot de passe Windows",
-    },
-    {
-        "id": "FICHE-002",
-        "title": "Connexion au VPN (Cisco AnyConnect)",
-        "keywords": [
-            "vpn", "cisco", "anyconnect", "accès distant", "télétravail", "connexion",
-            "vpn.cd08.fr", "réseau", "remote", "connect", "network", "work from home",
-            "telework", "credentials rejected", "certificate",
-        ],
-        "solution": (
-            "Prérequis : Cisco AnyConnect installé + identifiants Active Directory.\n\n"
-            "Procédure :\n"
-            "1. Ouvrez Cisco AnyConnect.\n"
-            "2. Dans « Se connecter à », entrez : vpn.cd08.fr\n"
-            "3. Cliquez sur Connecter.\n"
-            "4. Entrez votre identifiant (prenom.nom) et mot de passe Windows.\n"
-            "5. Si double facteur demandé, entrez le code SMS.\n"
-            "6. Connexion établie en 15–30 secondes.\n\n"
-            "Erreurs fréquentes :\n"
-            "- 'Credentials rejected' → Réinitialisez votre mot de passe (FICHE-001)\n"
-            "- 'Cannot connect to server' → Vérifiez votre connexion internet\n"
-            "- 'Certificate error' ou 'License expired' → Contactez le Help Desk"
-        ),
-        "source": "FICHE-002 — Connexion au VPN (Cisco AnyConnect)",
-    },
-    {
-        "id": "FICHE-003",
-        "title": "Accès à la messagerie Outlook depuis l'extérieur",
-        "keywords": [
-            "outlook", "messagerie", "email", "mail", "extérieur", "domicile",
-            "mail.cd08.fr", "owa", "webmail", "home", "access", "emails",
-            "messages", "imap", "smtp", "outside", "external",
-        ],
-        "solution": (
-            "Option 1 — Via Outlook Web App (sans VPN) :\n"
-            "1. Ouvrez votre navigateur.\n"
-            "2. Allez sur : https://mail.cd08.fr\n"
-            "3. Entrez votre adresse email : prenom.nom@cd08.fr\n"
-            "4. Entrez votre mot de passe Windows.\n\n"
-            "Option 2 — Via l'application Outlook (avec VPN) :\n"
-            "1. Connectez-vous au VPN (voir FICHE-002).\n"
-            "2. Ouvrez Outlook — la synchronisation démarre automatiquement.\n\n"
-            "Config manuelle IMAP : mail.cd08.fr port 993 SSL. SMTP : smtp.cd08.fr port 587 TLS."
-        ),
-        "source": "FICHE-003 — Accès à la messagerie Outlook depuis l'extérieur",
-    },
-    {
-        "id": "FICHE-004",
-        "title": "Problème d'impression réseau",
-        "keywords": [
-            "imprimante", "impression", "printer", "imprimer", "bourrage", "papier",
-            "réseau", "print", "spooler", "printing", "paper jam", "stuck",
-            "queue", "reinstall", "network printer", "not printing",
-        ],
-        "solution": (
-            "Diagnostic rapide — vérifiez :\n"
-            "- L'imprimante est allumée (voyant vert)\n"
-            "- Câble réseau branché ou Wi-Fi actif\n"
-            "- Papier présent dans le bac\n"
-            "- Aucun bourrage papier signalé\n\n"
-            "Réinstaller une imprimante réseau :\n"
-            "1. Paramètres → Imprimantes et scanners → Ajouter une imprimante.\n"
-            "2. Si non détectée, choisir « Sélectionner une imprimante partagée par nom ».\n"
-            "3. Chemin réseau : \\\\print.cd08.fr\\NOM_IMPRIMANTE (étiquette sur l'appareil).\n\n"
-            "Impression bloquée en file d'attente :\n"
-            "1. Win+R → services.msc\n"
-            "2. Trouvez « Print Spooler » → Redémarrer.\n"
-            "3. Relancez l'impression."
-        ),
-        "source": "FICHE-004 — Problème d'impression réseau",
-    },
-    {
-        "id": "FICHE-005",
-        "title": "Demande de création de compte utilisateur",
-        "keywords": [
-            "compte", "utilisateur", "création", "nouvel agent", "arrivée", "accès",
-            "stagiaire", "rh", "prestataire", "new user", "new account", "create account",
-            "onboarding", "new employee", "intern", "contractor", "access request",
-        ],
-        "solution": (
-            "⚠️ Réservé aux responsables de service et gestionnaires RH.\n\n"
-            "Procédure :\n"
-            "1. Ouvrez un ticket GLPI — Catégorie : Demande → Gestion des comptes → Création.\n"
-            "2. Renseignez : nom/prénom, date d'arrivée, département, responsable, "
-            "applications nécessaires, durée si temporaire.\n"
-            "3. Joignez si possible la fiche de poste ou le contrat.\n"
-            "4. Délai de traitement : 48h ouvrées.\n\n"
-            "Accès créés automatiquement : compte Active Directory, messagerie Outlook (prenom.nom@cd08.fr), "
-            "accès intranet CD08, accès VPN sur demande explicite."
-        ),
-        "source": "FICHE-005 — Demande de création de compte utilisateur",
-    },
-    {
-        "id": "FICHE-006",
-        "title": "Accès à SEDIT (logiciel finances)",
-        "keywords": [
-            "sedit", "finance", "finances", "comptable", "budget", "mandatement",
-            "engagement", "logiciel finance", "accounting", "financial software",
-            "blank page", "session expired", "sedit password", "forgot sedit",
-            "sedit login", "sedit access",
-        ],
-        "solution": (
-            "SEDIT est le logiciel de gestion financière du CD08.\n\n"
-            "Connexion :\n"
-            "1. Connectez-vous au VPN (FICHE-002).\n"
-            "2. Accédez à : https://sedit.cd08.fr\n"
-            "3. Utilisez vos identifiants SEDIT (différents du mot de passe Windows).\n\n"
-            "Mot de passe SEDIT oublié : contactez votre référent SEDIT au service Finance "
-            "ou ouvrez un ticket GLPI (Applications métier → SEDIT → Mot de passe).\n\n"
-            "Problèmes fréquents :\n"
-            "- Page blanche → vider le cache (Ctrl+Shift+Del)\n"
-            "- Session expirée → reconnectez-vous (expire après 30 min d'inactivité)\n"
-            "- Erreur de droits → contactez le Help Desk"
-        ),
-        "source": "FICHE-006 — Accès à SEDIT (logiciel finances)",
-    },
-    {
-        "id": "FICHE-007",
-        "title": "Signaler un incident de sécurité",
-        "keywords": [
-            "sécurité", "incident", "phishing", "virus", "malware", "suspect", "suspicious",
-            "piratage", "vol", "perte", "signaler", "security", "hacked", "stolen",
-            "suspicious email", "attachment", "report", "unauthorized", "compromised",
-            "lost device", "received email", "strange email", "permission",
-            "unauthorized access", "account used", "without permission", "account compromised",
-        ],
-        "solution": (
-            "🔴 En cas de doute, signalez toujours.\n\n"
-            "Incident actif (urgence) → 📞 Appelez immédiatement le Help Desk : 03 24 XX XX XX\n"
-            "Ne pas éteindre le poste. Ne pas déconnecter le câble réseau.\n\n"
-            "Incident non urgent :\n"
-            "1. Ouvrez un ticket GLPI — Catégorie : Incident → Sécurité.\n"
-            "2. Décrivez ce que vous avez observé (heure, action, message affiché).\n"
-            "3. Si email suspect reçu, transférez-le en pièce jointe au ticket.\n"
-            "SLA : réponse en 2h pour les incidents sécurité.\n\n"
-            "Exemples d'incidents : email de phishing, compte utilisé sans autorisation, "
-            "poste anormalement lent, lien suspect cliqué, perte/vol d'équipement professionnel."
-        ),
-        "source": "FICHE-007 — Signaler un incident de sécurité",
-    },
-]
+_DECLINE_KEYWORDS = {"no", "n", "no thanks", "not now", "don't create", "do not create"}
+
+_TICKET_FORM_PREFIX = "__TICKET_FORM__"
+
+# ── Local knowledge base (loaded from knowledge/*.md) ────────────────────────
+
+_KNOWLEDGE_DIR = Path(__file__).resolve().parent.parent / "knowledge"
+_TOKEN_PATTERN = re.compile(r"[a-zA-ZÀ-ÿ0-9][a-zA-ZÀ-ÿ0-9_-]{2,}")
+
+
+def _load_folder_kb() -> list[dict[str, Any]]:
+    if not _KNOWLEDGE_DIR.exists():
+        return []
+
+    entries: list[dict[str, Any]] = []
+    for file_path in sorted(_KNOWLEDGE_DIR.glob("*.md")):
+        raw = file_path.read_text(encoding="utf-8").strip()
+        if not raw:
+            continue
+
+        first_line = raw.splitlines()[0].strip()
+        title = first_line.lstrip("# ").strip() if first_line.startswith("#") else file_path.stem
+        words = [w.lower() for w in _TOKEN_PATTERN.findall(raw)]
+
+        # Keep lightweight keyword extraction from file content.
+        keyword_counts: dict[str, int] = {}
+        for word in words:
+            if word in _GENERIC_WORDS:
+                continue
+            keyword_counts[word] = keyword_counts.get(word, 0) + 1
+        keywords = [kw for kw, _ in sorted(keyword_counts.items(), key=lambda item: item[1], reverse=True)[:40]]
+
+        entries.append(
+            {
+                "id": f"FILE-{file_path.stem}",
+                "title": title,
+                "keywords": keywords,
+                "solution": raw,
+                "source": str(file_path.relative_to(Path(__file__).resolve().parent.parent)),
+            }
+        )
+
+    return entries
+
+
+LOCAL_KB: list[dict[str, Any]] = _load_folder_kb()
 
 
 def _search_local_kb(query: str, max_results: int = 3, confidence_threshold: float = 0.4) -> list[dict]:
@@ -217,11 +107,14 @@ def _search_local_kb(query: str, max_results: int = 3, confidence_threshold: flo
 SYSTEM_PROMPT = """You are a self-service IT support agent for CD08 non-IT staff (Finance, HR, Legal, Administrative).
 You MUST use tools to answer — never generate an answer without calling a tool first.
 Step 1: Call search_knowledge_base for the issue.
-Step 2a: If action=SOLUTION_FOUND, return the solution to the user — do NOT create a ticket.
-Step 2b: If action=NO_SOLUTION_FOUND, call create_basic_ticket NOW with the user's message as title and description. Do NOT ask anything.
-Step 3 (emergency only): If the user writes URGENT, CRITICAL, or EMERGENCY, call get_support_contact instead.
-Reply in the same language the user wrote in. Translate KB content if needed.
-Never announce you will create a ticket — just call create_basic_ticket.
+Step 2a: If action=SOLUTION_FOUND, return the solution and end with exactly:
+"Is this answer helpful? Else you want me to create a ticket for you? (yes/no)"
+Step 2b: If action=NO_SOLUTION_FOUND, say you could not find an answer and ask:
+"Do you want me to create a ticket for you? (yes/no)"
+Step 3: Only create a ticket when the user explicitly confirms yes/create ticket.
+Step 4 (emergency only): If the user writes URGENT, CRITICAL, or EMERGENCY, call get_support_contact instead.
+Always reply in English only, even if source documents are in another language.
+If KB content is not in English, translate it to English before answering.
 """
 
 
@@ -346,6 +239,26 @@ class KbAgent:
         }
 
     def run(self, user_message: str) -> str:
+        form_submission = self._parse_ticket_form_submission(user_message)
+        if form_submission:
+            result = self._create_basic_ticket(
+                title=form_submission["title"],
+                description=form_submission["description"],
+                priority=form_submission.get("priority", "medium"),
+            )
+            tid = result.get("ticket_id")
+            ticket_url = result.get("ticket_url")
+            if tid and ticket_url:
+                return (
+                    f"Your GLPI ticket has been created: **#{tid}**\n\n"
+                    f"[Open ticket #{tid}]({ticket_url})\n\n"
+                    "The Help Desk will respond within 4 hours."
+                )
+            return "Your support ticket has been created. The Help Desk will respond within 4 hours."
+
+        if self._is_ticket_creation_declined(user_message):
+            return "Understood. I will not create a ticket."
+
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_message},
@@ -360,14 +273,14 @@ class KbAgent:
             if not tool_calls:
                 content = assistant_message.get("content")
                 if content:
-                    return content
+                    return self._enforce_english_output(content)
                 # Model returned empty content — synthesize from last tool result
-                return self._fallback_response(messages)
+                return self._enforce_english_output(self._fallback_response(messages))
 
             for tool_call in tool_calls:
                 name = tool_call["function"]["name"]
                 arguments = self._tool_arguments(tool_call)
-                result = self._call_tool(name, arguments)
+                result = self._call_tool(name, arguments, user_message)
                 messages.append(
                     {
                         "role": "tool",
@@ -400,12 +313,14 @@ class KbAgent:
             return {"_argument_error": "Tool arguments must be a JSON object.", "_raw": raw_arguments}
         return arguments
 
-    def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+    def _call_tool(self, name: str, arguments: dict[str, Any], user_message: str) -> Any:
         if "_argument_error" in arguments:
             return {"error": arguments["_argument_error"], "raw_arguments": arguments.get("_raw")}
         handler = self.tool_handlers.get(name)
         if not handler:
             return {"error": f"Unknown tool: {name}"}
+        if name == "create_basic_ticket" and not self._has_create_ticket_intent(user_message):
+            return {"error": "Ticket creation requires explicit user confirmation: yes/no."}
         try:
             return handler(**arguments)
         except Exception as exc:
@@ -421,12 +336,39 @@ class KbAgent:
             return ""
         if result.get("created"):
             tid = result.get("ticket_id")
-            return f"Your support ticket #{tid} has been created. The Help Desk will respond within 4 hours."
+            ticket_url = result.get("ticket_url")
+            if tid and ticket_url:
+                return (
+                    f"Your GLPI ticket has been created: **#{tid}**\n\n"
+                    f"[Open ticket #{tid}]({ticket_url})\n\n"
+                    "The Help Desk will respond within 4 hours."
+                )
+            return "Your support ticket has been created. The Help Desk will respond within 4 hours."
         if result.get("found") is False:
-            return "No matching solution was found in the knowledge base. A ticket has been queued for the Help Desk."
+            return "I could not find a matching answer in the knowledge base. Do you want me to create a ticket for you? (yes/no)"
         if result.get("found") and result.get("best_solution"):
-            return f"**{result.get('title')}**\n\n{result.get('best_solution', '')}"
+            return (
+                f"**{result.get('title')}**\n\n{result.get('best_solution', '')}\n\n"
+                "Is this answer helpful? Else you want me to create a ticket for you? (yes/no)"
+            )
         return ""
+
+    def _enforce_english_output(self, content: str) -> str:
+        english_guard = (
+            "\n\nRespond in English only. If your previous answer was not English, "
+            "rewrite it in English with the same meaning."
+        )
+        messages: list[dict[str, Any]] = [
+            {"role": "system", "content": "You are a strict English rewriter. Output English only."},
+            {"role": "user", "content": f"{content}{english_guard}"},
+        ]
+        try:
+            response = self.llm.chat(messages, tools=[])
+            message = self._assistant_message(response)
+            rewritten = (message.get("content") or "").strip()
+            return rewritten or content
+        except Exception:
+            return content
 
     # ── Tool implementations ──────────────────────────────────────────────────
 
@@ -541,10 +483,14 @@ class KbAgent:
             "priority": priority_map.get(priority, 3),
         }
         result = self.glpi.create_item("Ticket", fields)
+        ticket_id = self._extract_ticket_id(result)
+        ticket_url = self._build_ticket_url(ticket_id) if ticket_id else None
         return {
             "created": True,
-            "ticket_id": result.get("id"),
-            "message": f"Ticket #{result.get('id')} created. Help Desk will respond within 4 hours.",
+            "ticket_id": ticket_id,
+            "ticket_url": ticket_url,
+            "message": f"Ticket #{ticket_id} created. Help Desk will respond within 4 hours." if ticket_id else "Ticket created.",
+            "raw_result": result,
         }
 
     @staticmethod
@@ -573,3 +519,85 @@ class KbAgent:
             "query": query,
             "action": "Will be reviewed by Help Desk.",
         }
+
+    @staticmethod
+    def _extract_ticket_id(result: Any) -> int | None:
+        if isinstance(result, dict):
+            direct = result.get("id")
+            if isinstance(direct, int):
+                return direct
+            if isinstance(direct, str) and direct.isdigit():
+                return int(direct)
+
+            # Some GLPI responses return nested structures.
+            nested_candidates = [result.get("data"), result.get("item"), result.get("items")]
+            for candidate in nested_candidates:
+                if isinstance(candidate, dict):
+                    nested_id = candidate.get("id")
+                    if isinstance(nested_id, int):
+                        return nested_id
+                    if isinstance(nested_id, str) and nested_id.isdigit():
+                        return int(nested_id)
+                if isinstance(candidate, list):
+                    for entry in candidate:
+                        if isinstance(entry, dict):
+                            nested_id = entry.get("id")
+                            if isinstance(nested_id, int):
+                                return nested_id
+                            if isinstance(nested_id, str) and nested_id.isdigit():
+                                return int(nested_id)
+        return None
+
+    def _build_ticket_url(self, ticket_id: int) -> str:
+        return f"{self.glpi.settings.glpi_base_url}/front/ticket.form.php?id={ticket_id}"
+
+    @staticmethod
+    def _extract_current_user_message(user_message: str) -> str:
+        marker = "Current user message:"
+        if marker in user_message:
+            return user_message.rsplit(marker, 1)[1].strip()
+        return user_message.strip()
+
+    @classmethod
+    def _has_create_ticket_intent(cls, user_message: str) -> bool:
+        current = cls._extract_current_user_message(user_message).lower().strip()
+        compact = " ".join(current.split())
+        if compact.startswith(_TICKET_FORM_PREFIX.lower()):
+            return True
+        return any(keyword in compact for keyword in _CREATE_CONFIRM_KEYWORDS)
+
+    @classmethod
+    def _is_ticket_creation_declined(cls, user_message: str) -> bool:
+        current = cls._extract_current_user_message(user_message).lower().strip()
+        compact = " ".join(current.split())
+        if compact not in _DECLINE_KEYWORDS:
+            return False
+        whole = user_message.lower()
+        return (
+            "create a ticket for you" in whole
+            or "would you like me to create a ticket" in whole
+            or "do you want me to create a ticket" in whole
+        )
+
+    @classmethod
+    def _parse_ticket_form_submission(cls, user_message: str) -> dict[str, str] | None:
+        current = cls._extract_current_user_message(user_message)
+        if not current.startswith(_TICKET_FORM_PREFIX):
+            return None
+        raw_json = current[len(_TICKET_FORM_PREFIX) :].strip()
+        if not raw_json:
+            return None
+        try:
+            payload = json.loads(raw_json)
+        except JSONDecodeError:
+            return None
+        if not isinstance(payload, dict):
+            return None
+        title = str(payload.get("title", "")).strip()
+        description = str(payload.get("description", "")).strip()
+        priority = str(payload.get("priority", "medium")).strip().lower()
+        if not title or not description:
+            return None
+        if priority not in {"low", "medium", "high"}:
+            priority = "medium"
+        return {"title": title, "description": description, "priority": priority}

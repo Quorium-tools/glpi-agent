@@ -49,21 +49,13 @@ services:
     command: npm run dev -- --hostname 0.0.0.0 --port 3005
     volumes:
       - ./web:/app
-      - glpi-web-node-modules:/app/node_modules
-      - glpi-web-next:/app/.next
+      - /app/node_modules
+      - /app/.next
     depends_on:
       - glpi-help-desk-agent
       - glpi-departments-support-agent
     networks:
       - quorium-network
-
-volumes:
-  glpi-web-node-modules:
-    name: glpi-web-node-modules
-    driver: local
-  glpi-web-next:
-    name: glpi-web-next
-    driver: local
 
 networks:
   quorium-network:

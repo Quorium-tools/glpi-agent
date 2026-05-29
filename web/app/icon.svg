@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Rounded square background -->
+  <rect width="32" height="32" rx="7" fill="#0f1a14"/>
+
+  <!-- Ardennes "A" mark: crossbar + legs, dark green -->
+  <g fill="none" stroke="#2a9270" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left leg -->
+    <line x1="6" y1="24" x2="11" y2="10" stroke-width="2.2"/>
+    <!-- Right leg -->
+    <line x1="16" y1="24" x2="11" y2="10" stroke-width="2.2"/>
+    <!-- Crossbar -->
+    <line x1="7.8" y1="19" x2="14.2" y2="19" stroke-width="1.8"/>
+    <!-- Snowflake dots above apex -->
+    <circle cx="11" cy="7.5" r="0.9" fill="#2a9270" stroke="none"/>
+    <circle cx="9.2" cy="6.2" r="0.6" fill="#2a9270" stroke="none"/>
+    <circle cx="12.8" cy="6.2" r="0.6" fill="#2a9270" stroke="none"/>
+  </g>
+
+  <!-- GLPI "G" swoosh, cyan/blue -->
+  <g transform="translate(17, 9) scale(0.52)">
+    <!-- Outer arc of G -->
+    <path d="M13 1.5 C6.1 1.5 0.5 7.1 0.5 14 C0.5 20.9 6.1 26.5 13 26.5 C18.5 26.5 23.2 22.9 24.9 17.8 L15 17.8 L15 13.5 L26.5 13.5 L26.5 14 C26.5 20.9 20.9 26.5 14 26.5" fill="none" stroke="#29ABE2" stroke-width="3" stroke-linecap="round"/>
+    <!-- Inner swoosh -->
+    <path d="M13 5 C13 5 4 8 4 14 C4 20 9 23 13 23" fill="none" stroke="#93d9f5" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  </g>
+</svg>

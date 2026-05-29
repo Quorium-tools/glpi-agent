@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "GLPI Agent",
   description: "A modern chat web UI for the OpenRouter-powered GLPI agent",
+  icons: { icon: "/icon.svg" },
 };
 
 export default function RootLayout({

@@ -235,7 +235,10 @@ class GlpiClient(AbstractContextManager["GlpiClient"]):
         return {
             "total_returned": len(tickets),
             "tickets": [self._ticket_summary(ticket) for ticket in tickets if isinstance(ticket, dict)],
-            "format_instruction": "Answer with a short compact list. Deleted tickets are hidden unless include_deleted=true.",
+            "format_instruction": (
+                "Answer with a short compact list. Deleted tickets are hidden unless include_deleted=true. "
+                "Use each ticket priority_code and priority_label exactly as returned; do not remap or reinterpret them."
+            ),
         }
 
     def get_ticket(
@@ -587,13 +590,36 @@ class GlpiClient(AbstractContextManager["GlpiClient"]):
             status_label = status.get("name") or status.get("id")
         else:
             status_label = status
+        priority_code, priority_label = GlpiClient._priority_fields(ticket.get("priority"))
         return {
             "id": ticket.get("id"),
             "title": ticket.get("name"),
             "status": status_label,
             "priority": ticket.get("priority"),
+            "priority_code": priority_code,
+            "priority_label": priority_label,
             "date": ticket.get("date") or ticket.get("date_creation"),
         }
+
+    @staticmethod
+    def _priority_fields(priority: Any) -> tuple[int | None, str]:
+        if isinstance(priority, int):
+            return priority, f"P{priority}"
+        if isinstance(priority, str):
+            text = priority.strip()
+            if text.isdigit():
+                value = int(text)
+                return value, f"P{value}"
+            return None, text or "unknown"
+        if isinstance(priority, dict):
+            code = priority.get("id") if isinstance(priority.get("id"), int) else None
+            label = str(priority.get("name") or "").strip()
+            if code is None and isinstance(priority.get("id"), str) and str(priority.get("id")).isdigit():
+                code = int(str(priority.get("id")))
+            if not label and code is not None:
+                label = f"P{code}"
+            return code, label or "unknown"
+        return None, "unknown"
 
     @classmethod
     def _build_ticket_payload(
