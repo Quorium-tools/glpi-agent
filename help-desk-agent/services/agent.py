@@ -109,6 +109,17 @@ CONFIRMATION_KEYWORDS = {
     "yes",
 }
 
+GREETING_KEYWORDS = {
+    "hello",
+    "hello!",
+    "hey",
+    "hi",
+    "hi!",
+    "good morning",
+    "good afternoon",
+    "good evening",
+}
+
 BLOCKED_NON_TICKET_TOOLS = {
     "create_problem",
     "create_change",
@@ -846,6 +857,12 @@ class GlpiAgent:
         normalized_current = self._normalize_text(current)
         normalized_all = self._normalize_text(user_message)
 
+        if self._is_greeting(normalized_current):
+            return (
+                "Hi, I'm the GLPI Help Desk Agent. My main job is to manage GLPI tickets: "
+                "create, list, read, update, assign, add follow-ups/tasks/solutions, and suggest fixes."
+            )
+
         if self._has_ticket_scope(normalized_current):
             return None
 
@@ -871,6 +888,10 @@ class GlpiAgent:
     @classmethod
     def _has_ticket_scope(cls, value: str) -> bool:
         return any(keyword in value for keyword in TICKET_SCOPE_KEYWORDS)
+
+    @staticmethod
+    def _is_greeting(value: str) -> bool:
+        return value in GREETING_KEYWORDS
 
     @classmethod
     def _is_allowed_ticket_lookup(cls, itemtype: Any) -> bool:

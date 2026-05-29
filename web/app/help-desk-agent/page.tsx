@@ -98,6 +98,11 @@ export default function Home() {
     void sendMessage(input);
   }
 
+  function handlePromptClick(prompt: string) {
+    setInput(prompt);
+    inputRef.current?.focus();
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -107,21 +112,10 @@ export default function Home() {
           <p>OpenRouter-powered assistant connected to your GLPI API V2 tools.</p>
         </div>
 
-        <div className="settings-panel">
-          <label className="field-label">
-            Model override
-            <input
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-              placeholder="openai/gpt-4o-mini"
-            />
-          </label>
-        </div>
-
         <div className="prompt-list">
           <span>Try</span>
           {starterPrompts.map((prompt) => (
-            <button key={prompt} type="button" onClick={() => void sendMessage(prompt)}>
+            <button key={prompt} type="button" onClick={() => handlePromptClick(prompt)}>
               {prompt}
             </button>
           ))}

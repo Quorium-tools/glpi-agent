@@ -42,7 +42,10 @@ services:
       BACKEND_URL: http://glpi-help-desk-agent:8004
       BACKEND_KB_URL: http://glpi-departments-support-agent:8005
       CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "250"
       WATCHPACK_POLLING: "true"
+      WATCHPACK_POLLING_INTERVAL: "250"
+      NEXT_WEBPACK_USEPOLLING: "1"
     command: npm run dev -- --hostname 0.0.0.0 --port 3005
     volumes:
       - ./web:/app
