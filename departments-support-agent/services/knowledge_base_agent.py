@@ -18,6 +18,12 @@ _GENERIC_WORDS = {
 }
 
 _CREATE_CONFIRM_KEYWORDS = {
+    "confirmer",
+    "crée",
+    "créer le ticket",
+    "créer un ticket",
+    "crée le ticket",
+    "oui",
     "yes",
     "yes create it",
     "create it",
@@ -27,7 +33,7 @@ _CREATE_CONFIRM_KEYWORDS = {
     "please create",
 }
 
-_DECLINE_KEYWORDS = {"no", "n", "no thanks", "not now", "don't create", "do not create"}
+_DECLINE_KEYWORDS = {"no", "n", "non", "non merci", "pas maintenant", "don't create", "do not create"}
 
 _TICKET_FORM_PREFIX = "__TICKET_FORM__"
 
@@ -104,17 +110,18 @@ def _search_local_kb(query: str, max_results: int = 3, confidence_threshold: flo
     return scored[:max_results]
 
 
-SYSTEM_PROMPT = """You are a self-service IT support agent for CD08 non-IT staff (Finance, HR, Legal, Administrative).
-You MUST use tools to answer — never generate an answer without calling a tool first.
-Step 1: Call search_knowledge_base for the issue.
-Step 2a: If action=SOLUTION_FOUND, return the solution and end with exactly:
-"Is this answer helpful? Else you want me to create a ticket for you? (yes/no)"
-Step 2b: If action=NO_SOLUTION_FOUND, say you could not find an answer and ask:
-"Do you want me to create a ticket for you? (yes/no)"
-Step 3: Only create a ticket when the user explicitly confirms yes/create ticket.
-Step 4 (emergency only): If the user writes URGENT, CRITICAL, or EMERGENCY, call get_support_contact instead.
-Always reply in English only, even if source documents are in another language.
-If KB content is not in English, translate it to English before answering.
+SYSTEM_PROMPT = """Tu es un agent de support IT en self-service pour le personnel non-IT du CD08 (Finance, RH, Juridique, Administratif).
+Tu DOIS utiliser les outils pour répondre et toujours répondre en français.
+Étape 1 : appelle search_knowledge_base pour le problème.
+Étape 2a : si action=SOLUTION_FOUND, retourne la solution et termine exactement par :
+"Cette réponse vous aide-t-elle ? Sinon, voulez-vous que je crée un ticket pour vous ? (oui/non)"
+Étape 2b : si action=NO_SOLUTION_FOUND, ne crée pas immédiatement un ticket. Pose des questions courtes pour collecter les détails manquants.
+Avant toute création de ticket, collecte au minimum : titre clair, description du problème, périmètre (poste/application/service), impact, date/heure de début (si connue).
+Ensuite, fais un récapitulatif et demande exactement :
+"Confirmez-vous la création du ticket avec ces informations ? (oui/non)"
+N'appelle create_basic_ticket qu'après confirmation positive explicite.
+Si l'utilisateur répond non, demande les corrections, mets à jour le brouillon, puis redemande confirmation.
+Étape 3 (urgence uniquement) : si l'utilisateur écrit URGENT, CRITICAL ou EMERGENCY, appelle get_support_contact.
 """
 
 
@@ -124,26 +131,26 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "search_knowledge_base",
             "description": (
-                "Search the knowledge base for the user's issue. "
-                "Searches built-in IT fiches and solved/closed GLPI tickets. "
-                "Always call this first before offering to create a ticket."
+                "Recherche le problème utilisateur dans la base de connaissances. "
+                "Inclut les fiches IT intégrées et les tickets GLPI résolus/clôturés. "
+                "À appeler en premier avant de proposer la création d'un ticket."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The user's question or issue description.",
+                        "description": "Question utilisateur ou description du problème.",
                     },
                     "max_results": {
                         "type": "integer",
                         "default": 3,
-                        "description": "Maximum number of results to return.",
+                        "description": "Nombre maximal de résultats à retourner.",
                     },
                     "confidence_threshold": {
                         "type": "number",
                         "default": 0.8,
-                        "description": "Minimum confidence score to include a result (0–1). Results below this return found=false.",
+                        "description": "Score de confiance minimal pour inclure un résultat (0–1). En dessous, retourne found=false.",
                     },
                 },
                 "required": ["query"],
@@ -155,26 +162,25 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "create_basic_ticket",
             "description": (
-                "Create a support ticket in GLPI for the user. "
-                "Call this immediately when search_knowledge_base finds no solution. "
-                "Do NOT announce you will create a ticket — just call this function."
+                "Crée un ticket de support GLPI pour l'utilisateur. "
+                "À appeler uniquement après collecte des informations clés et confirmation explicite de l'utilisateur."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "title": {
                         "type": "string",
-                        "description": "Short ticket title describing the issue.",
+                        "description": "Titre court du ticket décrivant le problème.",
                     },
                     "description": {
                         "type": "string",
-                        "description": "Full description of the issue.",
+                        "description": "Description complète du problème.",
                     },
                     "priority": {
                         "type": "string",
                         "enum": ["low", "medium", "high"],
                         "default": "medium",
-                        "description": "Ticket priority.",
+                        "description": "Priorité du ticket.",
                     },
                 },
                 "required": ["title", "description"],
@@ -185,7 +191,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_support_contact",
-            "description": "Return the Help Desk phone number and support hours for genuine emergencies.",
+            "description": "Retourne le numéro du Help Desk et ses horaires en cas d'urgence réelle.",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -193,13 +199,13 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_ticket_by_id",
-            "description": "Retrieve full details of a specific GLPI ticket including its solution text.",
+            "description": "Récupère les détails complets d'un ticket GLPI, y compris son texte de solution.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "ticket_id": {
                         "type": "integer",
-                        "description": "GLPI ticket ID.",
+                        "description": "ID du ticket GLPI.",
                     },
                 },
                 "required": ["ticket_id"],
@@ -210,13 +216,13 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "log_unfound_query",
-            "description": "Log a query that had no KB match so the Help Desk can improve the knowledge base.",
+            "description": "Journalise une requête sans correspondance KB pour améliorer la base de connaissances.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The search query that returned no results.",
+                        "description": "Requête de recherche n'ayant retourné aucun résultat.",
                     },
                 },
                 "required": ["query"],
@@ -250,14 +256,14 @@ class KbAgent:
             ticket_url = result.get("ticket_url")
             if tid and ticket_url:
                 return (
-                    f"Your GLPI ticket has been created: **#{tid}**\n\n"
-                    f"[Open ticket #{tid}]({ticket_url})\n\n"
-                    "The Help Desk will respond within 4 hours."
+                    f"Votre ticket GLPI a été créé : **#{tid}**\n\n"
+                    f"[Ouvrir le ticket #{tid}]({ticket_url})\n\n"
+                    "Le Help Desk répondra sous 4 heures."
                 )
-            return "Your support ticket has been created. The Help Desk will respond within 4 hours."
+            return "Votre ticket support a été créé. Le Help Desk répondra sous 4 heures."
 
         if self._is_ticket_creation_declined(user_message):
-            return "Understood. I will not create a ticket."
+            return "Compris. Je ne crée pas de ticket."
 
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -273,9 +279,9 @@ class KbAgent:
             if not tool_calls:
                 content = assistant_message.get("content")
                 if content:
-                    return self._enforce_english_output(content)
+                    return content
                 # Model returned empty content — synthesize from last tool result
-                return self._enforce_english_output(self._fallback_response(messages))
+                return self._fallback_response(messages)
 
             for tool_call in tool_calls:
                 name = tool_call["function"]["name"]
@@ -290,7 +296,7 @@ class KbAgent:
                     }
                 )
 
-        return "The agent reached the tool-call limit before completing the request."
+        return "L'agent a atteint la limite d'appels outils avant de terminer la demande."
 
     @staticmethod
     def _assistant_message(response: dict[str, Any]) -> dict[str, Any]:
@@ -320,7 +326,7 @@ class KbAgent:
         if not handler:
             return {"error": f"Unknown tool: {name}"}
         if name == "create_basic_ticket" and not self._has_create_ticket_intent(user_message):
-            return {"error": "Ticket creation requires explicit user confirmation: yes/no."}
+            return {"error": "La création d'un ticket exige une confirmation explicite de l'utilisateur: oui/non."}
         try:
             return handler(**arguments)
         except Exception as exc:
@@ -339,36 +345,19 @@ class KbAgent:
             ticket_url = result.get("ticket_url")
             if tid and ticket_url:
                 return (
-                    f"Your GLPI ticket has been created: **#{tid}**\n\n"
-                    f"[Open ticket #{tid}]({ticket_url})\n\n"
-                    "The Help Desk will respond within 4 hours."
+                    f"Votre ticket GLPI a été créé : **#{tid}**\n\n"
+                    f"[Ouvrir le ticket #{tid}]({ticket_url})\n\n"
+                    "Le Help Desk répondra sous 4 heures."
                 )
-            return "Your support ticket has been created. The Help Desk will respond within 4 hours."
+            return "Votre ticket support a été créé. Le Help Desk répondra sous 4 heures."
         if result.get("found") is False:
-            return "I could not find a matching answer in the knowledge base. Do you want me to create a ticket for you? (yes/no)"
+            return "Je n'ai pas trouvé de réponse correspondante dans la base de connaissances. Voulez-vous que je crée un ticket pour vous ? (oui/non)"
         if result.get("found") and result.get("best_solution"):
             return (
                 f"**{result.get('title')}**\n\n{result.get('best_solution', '')}\n\n"
-                "Is this answer helpful? Else you want me to create a ticket for you? (yes/no)"
+                "Cette réponse vous aide-t-elle ? Sinon, voulez-vous que je crée un ticket pour vous ? (oui/non)"
             )
         return ""
-
-    def _enforce_english_output(self, content: str) -> str:
-        english_guard = (
-            "\n\nRespond in English only. If your previous answer was not English, "
-            "rewrite it in English with the same meaning."
-        )
-        messages: list[dict[str, Any]] = [
-            {"role": "system", "content": "You are a strict English rewriter. Output English only."},
-            {"role": "user", "content": f"{content}{english_guard}"},
-        ]
-        try:
-            response = self.llm.chat(messages, tools=[])
-            message = self._assistant_message(response)
-            rewritten = (message.get("content") or "").strip()
-            return rewritten or content
-        except Exception:
-            return content
 
     # ── Tool implementations ──────────────────────────────────────────────────
 
@@ -497,8 +486,8 @@ class KbAgent:
     def _get_support_contact() -> dict[str, Any]:
         return {
             "phone": "+33 XX XX XX XX",
-            "hours": "Monday–Friday 8AM–6PM",
-            "location": "Building A, Ground Floor",
+            "hours": "Lundi–Vendredi 8h–18h",
+            "location": "Bâtiment A, rez-de-chaussée",
         }
 
     def _get_ticket_by_id(self, ticket_id: int) -> dict[str, Any]:
@@ -517,7 +506,7 @@ class KbAgent:
         return {
             "logged": True,
             "query": query,
-            "action": "Will be reviewed by Help Desk.",
+            "action": "Sera revu par le Help Desk.",
         }
 
     @staticmethod
@@ -577,6 +566,9 @@ class KbAgent:
             "create a ticket for you" in whole
             or "would you like me to create a ticket" in whole
             or "do you want me to create a ticket" in whole
+            or "crée un ticket pour vous" in whole
+            or "créer un ticket pour vous" in whole
+            or "voulez-vous que je crée un ticket" in whole
         )
 
     @classmethod

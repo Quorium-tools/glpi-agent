@@ -21,20 +21,20 @@ type ParsedTicketLine = {
 };
 
 const starterPrompts = [
-  "List all tickets I have.",
-  "Suggest a solution for ticket 1.",
-  "Create a ticket task for ticket 1: checked printer queue, duration 15 minutes.",
-  "Generate a ticket report grouped by status and priority.",
-  "Search printers with name like accounting.",
+  "Liste tous mes tickets.",
+  "Propose une solution pour le ticket 1.",
+  "Crée une tâche sur le ticket 1 : vérification de la file d'impression, durée 15 minutes.",
+  "Génère un rapport de tickets groupé par statut et priorité.",
+  "Recherche les imprimantes dont le nom contient compta.",
 ];
 
 const PRIORITY_LABEL_BY_CODE: Record<number, string> = {
-  1: "Very low",
-  2: "Low",
-  3: "Medium",
-  4: "High",
-  5: "Very high",
-  6: "Major",
+  1: "Très faible",
+  2: "Faible",
+  3: "Moyenne",
+  4: "Haute",
+  5: "Très haute",
+  6: "Majeure",
 };
 
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-opus-4.7";
@@ -78,7 +78,7 @@ export default function HelpDeskAgentPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi. Ask me to create, list, read, update, delete, or solve tickets. I can also suggest support solutions before saving them.",
+      content: "Bonjour. Je peux créer, lister, lire, mettre à jour, supprimer ou résoudre des tickets. Je peux aussi proposer des solutions avant enregistrement.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -115,7 +115,7 @@ export default function HelpDeskAgentPage() {
       const answer = response.ok ? data.answer : `${data.error}\n${data.detail || ""}`.trim();
       setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: answer }]);
     } catch (error) {
-      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: error instanceof Error ? error.message : "The request failed." }]);
+      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: error instanceof Error ? error.message : "La requête a échoué." }]);
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
@@ -153,14 +153,14 @@ export default function HelpDeskAgentPage() {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
-            Help Desk Agent
+            Agent Help Desk
           </span>
           <Link href="/departments-support-agent" className="agent-switcher-pill">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="7" width="20" height="14" rx="2"/>
               <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
             </svg>
-            Departments Support Agent
+            Agent Support Départements
           </Link>
         </div>
       </nav>
@@ -176,15 +176,15 @@ export default function HelpDeskAgentPage() {
               </svg>
             </div>
             <div>
-              <h1>Help Desk Agent</h1>
-              <p>OpenRouter-powered assistant connected to your GLPI API V2 tools.</p>
+              <h1>Agent Help Desk</h1>
+              <p>Assistant propulsé par OpenRouter, connecté à vos outils GLPI API V2.</p>
             </div>
           </div>
         </div>
 
         {/* Prompts */}
         <div className="prompt-list">
-          <span>Try asking</span>
+          <span>Exemples de demandes</span>
           {starterPrompts.map((prompt) => (
             <button key={prompt} type="button" onClick={() => { setInput(prompt); inputRef.current?.focus(); }}>
               {prompt}
@@ -197,8 +197,8 @@ export default function HelpDeskAgentPage() {
       <section className="chat-panel">
         <header className="chat-header">
           <div>
-            <strong>Help Desk Agent</strong>
-            <span>Live GLPI writes enabled</span>
+            <strong>Agent Help Desk</strong>
+            <span>Écriture GLPI active</span>
           </div>
           <div className={`status-pill ${isSending ? "busy" : ""}`}>
             {isSending ? (
@@ -208,7 +208,7 @@ export default function HelpDeskAgentPage() {
             ) : (
               <span />
             )}
-            {isSending ? "Working…" : "Ready"}
+            {isSending ? "Traitement…" : "Prêt"}
           </div>
         </header>
 
@@ -216,7 +216,7 @@ export default function HelpDeskAgentPage() {
           {messages.map((message) => (
             <article key={message.id} className={`message ${message.role}`}>
               <div className="message-avatar">
-                <span>{message.role === "assistant" ? "HD" : "ME"}</span>
+                <span>{message.role === "assistant" ? "HD" : "MOI"}</span>
               </div>
               <div className="message-bubble">
                 {message.role === "assistant" && parseTicketListMessage(message.content) ? (
@@ -268,7 +268,7 @@ export default function HelpDeskAgentPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(input); } }}
-            placeholder="Ask about tickets, users, or assets…"
+            placeholder="Demandez des tickets, utilisateurs ou assets…"
             rows={1}
           />
           <button type="submit" disabled={!canSend}>

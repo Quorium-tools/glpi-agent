@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "GLPI Agent",
-  description: "A modern chat web UI for the OpenRouter-powered GLPI agent",
+  description: "Une interface de chat moderne pour l'agent GLPI propulsé par OpenRouter",
   icons: { icon: "/icon.svg" },
 };
 
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body suppressHydrationWarning>{children}</body>
     </html>
   );

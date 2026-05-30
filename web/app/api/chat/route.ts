@@ -21,18 +21,18 @@ function buildContextualMessage(body: ChatRequest, message: string): string {
   const cleaned = history
     .filter((item) => item.role && typeof item.content === "string" && item.content.trim())
     .slice(-8)
-    .map((item) => `${item.role === "assistant" ? "Assistant" : "User"}: ${item.content!.trim()}`);
+    .map((item) => `${item.role === "assistant" ? "Assistant" : "Utilisateur"}: ${item.content!.trim()}`);
 
   if (cleaned.length <= 1) {
     return message;
   }
 
   return [
-    "Conversation context from the web chat:",
+    "Contexte de conversation du chat web :",
     ...cleaned,
     "",
-    "Use the context above to resolve short confirmations like \"yes create it\" or \"do it\".",
-    `Current user message: ${message}`,
+    "Utilise le contexte ci-dessus pour résoudre les confirmations courtes comme \"oui crée-le\" ou \"fais-le\".",
+    `Message utilisateur courant : ${message}`,
   ].join("\n");
 }
 
@@ -42,12 +42,12 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON request." }, { status: 400 });
+    return NextResponse.json({ error: "Requête JSON invalide." }, { status: 400 });
   }
 
   const message = body.message?.trim();
   if (!message) {
-    return NextResponse.json({ error: "Message is required." }, { status: 400 });
+    return NextResponse.json({ error: "Le message est requis." }, { status: 400 });
   }
 
   const isDepartmentsSupportAgent = body.agent === "departments-support-agent";
@@ -70,12 +70,12 @@ export async function POST(request: NextRequest) {
       const data = await response.json();
       return NextResponse.json(data, { status: response.status });
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "Unknown error";
+      const detail = error instanceof Error ? error.message : "Erreur inconnue";
       return NextResponse.json(
         {
           error: isDepartmentsSupportAgent
-            ? "The Departments Support backend is unreachable."
-            : "The GLPI backend is unreachable.",
+            ? "Le backend Support Départements est inaccessible."
+            : "Le backend GLPI est inaccessible.",
           detail,
         },
         { status: 502 },
@@ -98,16 +98,16 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      answer: stdout.trim() || "The agent finished without a text response.",
+      answer: stdout.trim() || "L'agent a terminé sans réponse textuelle.",
       stderr: stderr.trim() || null,
     });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "Unknown error";
+    const detail = error instanceof Error ? error.message : "Erreur inconnue";
     return NextResponse.json(
       {
         error: isDepartmentsSupportAgent
-          ? "The Departments Support agent failed."
-          : "The GLPI agent failed.",
+          ? "L'agent Support Départements a échoué."
+          : "L'agent GLPI a échoué.",
         detail,
       },
       { status: 500 },

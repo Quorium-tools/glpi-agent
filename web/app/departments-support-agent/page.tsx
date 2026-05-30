@@ -18,12 +18,27 @@ type TicketDraft = {
   priority: "low" | "medium" | "high" | "very high" | "major";
 };
 
-const DECISION_FEEDBACK_WORDS = new Set(["no","n","yes","y","not helpful","not helpful!","not useful","create ticket"]);
+const DECISION_FEEDBACK_WORDS = new Set([
+  "no",
+  "n",
+  "non",
+  "yes",
+  "y",
+  "oui",
+  "pas utile",
+  "pas utile!",
+  "pas clair",
+  "crée un ticket",
+  "créer un ticket",
+]);
 
 function isTicketDecisionPrompt(text: string): boolean {
   const n = text.toLowerCase();
   return (
     /create a ticket for you\?\s*\((yes\/no|y\/n)\)/.test(n) ||
+    /crée un ticket pour vous\?\s*\((oui\/non)\)/.test(n) ||
+    /créer un ticket pour vous\?\s*\((oui\/non)\)/.test(n) ||
+    /confirmez-vous la création du ticket/.test(n) ||
     /would you like me to create a ticket/.test(n) ||
     /do you want me to create a ticket/.test(n)
   );
@@ -34,17 +49,17 @@ function looksLikeDecisionFeedback(text: string): boolean {
 }
 
 function buildTicketDraft(issue: string, previousGuidance: string): TicketDraft {
-  const normalizedIssue = issue.trim() || "Support request";
-  let subject = "IT support";
+  const normalizedIssue = issue.trim() || "Demande de support";
+  let subject = "Support IT";
   const lower = normalizedIssue.toLowerCase();
-  if (lower.includes("printer") || lower.includes("print")) subject = "Printer";
-  else if (lower.includes("password")) subject = "Password";
+  if (lower.includes("printer") || lower.includes("print")) subject = "Imprimante";
+  else if (lower.includes("password")) subject = "Mot de passe";
   else if (lower.includes("vpn")) subject = "VPN";
-  else if (lower.includes("email") || lower.includes("outlook")) subject = "Email";
+  else if (lower.includes("email") || lower.includes("outlook")) subject = "E-mail";
   else if (lower.includes("sedit")) subject = "SEDIT";
-  else if (lower.includes("security") || lower.includes("phishing")) subject = "Security";
+  else if (lower.includes("security") || lower.includes("phishing")) subject = "Sécurité";
 
-  const title = `${subject} issue: ${normalizedIssue.slice(0, 90)}`.trim();
+  const title = `${subject} : ${normalizedIssue.slice(0, 90)}`.trim();
   const compactGuidance = previousGuidance
     .replace(/\s+/g, " ")
     .replace(/is this answer helpful\?.*/i, "")
@@ -52,28 +67,28 @@ function buildTicketDraft(issue: string, previousGuidance: string): TicketDraft 
     .trim();
 
   const description = [
-    `User issue: ${normalizedIssue}`,
+    `Problème utilisateur : ${normalizedIssue}`,
     "",
-    "Observed behavior:",
-    "- The issue is still unresolved after self-service guidance.",
+    "Comportement observé :",
+    "- Le problème persiste malgré les conseils en self-service.",
     "",
-    "Troubleshooting already attempted:",
-    compactGuidance ? `- ${compactGuidance.slice(0, 500)}` : "- Initial troubleshooting attempted; issue persists.",
+    "Dépannage déjà tenté :",
+    compactGuidance ? `- ${compactGuidance.slice(0, 500)}` : "- Un premier dépannage a été effectué ; le problème persiste.",
     "",
-    "Business impact:",
-    "- User cannot complete normal work due to this issue.",
+    "Impact métier :",
+    "- L'utilisateur ne peut pas travailler normalement à cause de ce problème.",
   ].join("\n");
 
   return { title: title.slice(0, 120), description, priority: "medium" };
 }
 
 const starterPrompts = [
-  "How do I reset my password?",
-  "How do I connect to the VPN?",
-  "My printer is not working.",
-  "I received a suspicious email.",
-  "How do I access SEDIT?",
-  "How do I request an account for a new employee?",
+  "Comment réinitialiser mon mot de passe ?",
+  "Comment me connecter au VPN ?",
+  "Mon imprimante ne fonctionne pas.",
+  "J'ai reçu un e-mail suspect.",
+  "Comment accéder à SEDIT ?",
+  "Comment demander un compte pour un nouvel employé ?",
 ];
 
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-opus-4.7";
@@ -117,10 +132,10 @@ function TicketFormCard({
           </svg>
         </div>
         <div>
-          <strong>Create Ticket</strong>
-          <span>Review and submit to Help Desk</span>
+          <strong>Créer un ticket</strong>
+          <span>Vérifier et soumettre au Help Desk</span>
         </div>
-        <button type="button" className="ticket-card-discard" onClick={handleDiscard} title="Discard">
+        <button type="button" className="ticket-card-discard" onClick={handleDiscard} title="Annuler">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -129,11 +144,11 @@ function TicketFormCard({
 
       <div className="ticket-card-fields">
         <div className="ticket-card-field">
-          <label>Title</label>
+          <label>Titre</label>
           <input
             value={draft.title}
             onChange={(e) => onChange({ ...draft, title: e.target.value })}
-            placeholder="Ticket title"
+            placeholder="Titre du ticket"
           />
         </div>
         <div className="ticket-card-field">
@@ -141,13 +156,13 @@ function TicketFormCard({
           <textarea
             value={draft.description}
             onChange={(e) => onChange({ ...draft, description: e.target.value })}
-            placeholder="Describe your issue"
+            placeholder="Décrivez votre problème"
             rows={4}
           />
         </div>
         <div className="ticket-card-field ticket-card-field--row">
           <div className="ticket-card-field" style={{ flex: 1 }}>
-            <label>Priority</label>
+            <label>Priorité</label>
             <div className="priority-pills">
               {(["low", "medium", "high", "very high", "major"] as const).map((p) => (
                 <button
@@ -176,7 +191,7 @@ function TicketFormCard({
                 <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
               </svg>
             )}
-            Submit Ticket
+            Soumettre le ticket
           </button>
         </div>
       </div>
@@ -189,7 +204,7 @@ export default function DepartmentsSupportAgentPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I'm the self-service IT support assistant for CD08. Ask me about passwords, VPN, printers, email, SEDIT, or report a security incident. I'll answer directly or open a ticket for you.",
+      content: "Bonjour ! Je suis l'assistant IT en self-service du CD08. Posez vos questions sur les mots de passe, le VPN, les imprimantes, l'e-mail, SEDIT, ou signalez un incident de sécurité. Je répondrai directement ou j'ouvrirai un ticket pour vous.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -212,7 +227,16 @@ export default function DepartmentsSupportAgentPage() {
 
     const lowerPrompt = prompt.toLowerCase();
 
-    if (awaitingTicketDecision && (lowerPrompt === "yes" || lowerPrompt === "y" || lowerPrompt.includes("create ticket"))) {
+    if (
+      awaitingTicketDecision &&
+      (lowerPrompt === "yes" ||
+        lowerPrompt === "y" ||
+        lowerPrompt === "oui" ||
+        lowerPrompt === "o" ||
+        lowerPrompt.includes("create ticket") ||
+        lowerPrompt.includes("crée un ticket") ||
+        lowerPrompt.includes("créer un ticket"))
+    ) {
       setInput("");
       setMessages((c) => [...c, { id: crypto.randomUUID(), role: "user", content: prompt }]);
       setPendingTicketDraft(buildTicketDraft(lastIssueForTicket, lastGuidanceForTicket));
@@ -220,12 +244,12 @@ export default function DepartmentsSupportAgentPage() {
       return;
     }
 
-    if (awaitingTicketDecision && (lowerPrompt === "no" || lowerPrompt === "n")) {
+    if (awaitingTicketDecision && (lowerPrompt === "no" || lowerPrompt === "n" || lowerPrompt === "non")) {
       setInput("");
       setMessages((c) => [...c, { id: crypto.randomUUID(), role: "user", content: prompt }]);
       setAwaitingTicketDecision(false);
       setPendingTicketDraft(null);
-      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: "Understood. I will not create a ticket." }]);
+      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: "Compris. Je ne crée pas de ticket." }]);
       return;
     }
 
@@ -252,7 +276,7 @@ export default function DepartmentsSupportAgentPage() {
       setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: answer }]);
       setAwaitingTicketDecision(asksTicketCreation);
     } catch (error) {
-      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: error instanceof Error ? error.message : "The request failed." }]);
+      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: error instanceof Error ? error.message : "La requête a échoué." }]);
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
@@ -262,7 +286,7 @@ export default function DepartmentsSupportAgentPage() {
   async function submitTicketDraft() {
     if (!pendingTicketDraft || isSending) return;
     setIsSending(true);
-    setMessages((c) => [...c, { id: crypto.randomUUID(), role: "user", content: `Create ticket: ${pendingTicketDraft.title}` }]);
+    setMessages((c) => [...c, { id: crypto.randomUUID(), role: "user", content: `Créer le ticket : ${pendingTicketDraft.title}` }]);
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -279,7 +303,7 @@ export default function DepartmentsSupportAgentPage() {
       setPendingTicketDraft(null);
       setAwaitingTicketDecision(false);
     } catch (error) {
-      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: error instanceof Error ? error.message : "The request failed." }]);
+      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: error instanceof Error ? error.message : "La requête a échoué." }]);
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
@@ -317,14 +341,14 @@ export default function DepartmentsSupportAgentPage() {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
-            Help Desk Agent
+            Agent Help Desk
           </Link>
           <span className="agent-switcher-pill active">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="7" width="20" height="14" rx="2"/>
               <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
             </svg>
-            Departments Support Agent
+            Agent Support Départements
           </span>
         </div>
       </nav>
@@ -342,14 +366,14 @@ export default function DepartmentsSupportAgentPage() {
               </svg>
             </div>
             <div>
-              <h1>Departments Support</h1>
-              <p>Self-service IT support for Finance, HR, Legal, and other departments.</p>
+              <h1>Support Départements</h1>
+              <p>Support IT en self-service pour la Finance, les RH, le Juridique et les autres départements.</p>
             </div>
           </div>
         </div>
 
         <div className="prompt-list">
-          <span>Try asking</span>
+          <span>Exemples de demandes</span>
           {starterPrompts.map((prompt) => (
             <button key={prompt} type="button" onClick={() => { setInput(prompt); inputRef.current?.focus(); }}>
               {prompt}
@@ -362,8 +386,8 @@ export default function DepartmentsSupportAgentPage() {
       <section className="chat-panel">
         <header className="chat-header">
           <div>
-            <strong>Departments Support Agent</strong>
-            <span>Describe your issue — I'll help or open a ticket</span>
+            <strong>Agent Support Départements</strong>
+            <span>Décrivez votre problème — je vous aide ou j'ouvre un ticket</span>
           </div>
           <div className={`status-pill ${isSending ? "busy" : ""}`}>
             {isSending ? (
@@ -373,7 +397,7 @@ export default function DepartmentsSupportAgentPage() {
             ) : (
               <span />
             )}
-            {isSending ? "Working…" : "Ready"}
+            {isSending ? "Traitement…" : "Prêt"}
           </div>
         </header>
 
@@ -381,7 +405,7 @@ export default function DepartmentsSupportAgentPage() {
           {messages.map((message) => (
             <article key={message.id} className={`message ${message.role}`}>
               <div className="message-avatar">
-                <span>{message.role === "assistant" ? "DS" : "ME"}</span>
+                <span>{message.role === "assistant" ? "DS" : "MOI"}</span>
               </div>
               <div className="message-bubble">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" /> }}>{message.content}</ReactMarkdown>
@@ -399,7 +423,7 @@ export default function DepartmentsSupportAgentPage() {
                 onDiscard={() => {
                   setPendingTicketDraft(null);
                   setAwaitingTicketDecision(false);
-                  setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: "Ticket discarded. Let me know if you need anything else." }]);
+                  setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: "Ticket annulé. Dites-moi si vous avez besoin d'autre chose." }]);
                 }}
               />
             </article>
@@ -419,7 +443,7 @@ export default function DepartmentsSupportAgentPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(input); } }}
-            placeholder="Ask: how do I reset my password?"
+            placeholder="Exemple : comment réinitialiser mon mot de passe ?"
             rows={1}
           />
           <button type="submit" disabled={!canSend}>

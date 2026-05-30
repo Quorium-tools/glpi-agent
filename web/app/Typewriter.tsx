@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 
 const PHRASES = [
-  "built for your team",
-  "faster ticket handling",
-  "smarter IT support",
-  "cross-department workflows",
+  "pensé pour votre équipe",
+  "gestion des tickets plus rapide",
+  "support IT plus intelligent",
+  "workflows inter-départements",
 ];
 
 const TYPE_SPEED = 60;

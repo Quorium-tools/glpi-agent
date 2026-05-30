@@ -1,29 +1,69 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import Typewriter from "./Typewriter";
 
-export default function Home() {
+type GlpiUserCookie = {
+  name?: string;
+  username?: string;
+  email?: string;
+};
+
+export default async function Home() {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("glpi_access_token")?.value;
+  const userCookieRaw = cookieStore.get("glpi_user_info")?.value;
+  const scope = cookieStore.get("glpi_oauth_scope")?.value;
+
+  let userInfo: GlpiUserCookie | null = null;
+  if (userCookieRaw) {
+    try {
+      userInfo = JSON.parse(userCookieRaw) as GlpiUserCookie;
+    } catch {
+      userInfo = null;
+    }
+  }
+
+  const displayName =
+    userInfo?.name?.trim() || userInfo?.username?.trim() || userInfo?.email?.trim() || "Compte GLPI";
+
   return (
     <main className="home-shell">
+      <div className="home-auth-corner">
+        {!accessToken ? (
+          <a className="home-auth-login" href="/api/auth/glpi/start">
+            Se connecter
+          </a>
+        ) : (
+          <div className="home-auth-user">
+            <strong>{displayName}</strong>
+            {userInfo?.email ? <span>{userInfo.email}</span> : null}
+            {scope ? <span>Scope: {scope}</span> : null}
+            <form action="/api/auth/glpi/logout" method="post">
+              <button type="submit">Se déconnecter</button>
+            </form>
+          </div>
+        )}
+      </div>
 
       {/* ── Hero ── */}
       <section className="landing-hero" aria-label="Introduction">
-        <p className="eyebrow">GLPI AI Workspace</p>
+        <p className="eyebrow">Espace IA GLPI</p>
         <h1 className="landing-h1">
-          AI-powered support,<br />
+          Support assisté par IA,<br />
           <Typewriter />
         </h1>
         <p className="landing-lead">
-          Stop switching between tabs and hunting through ticket queues.
-          Two specialised AI agents handle everything from quick ticket lookups
-          to cross-department request workflows — so your team stays focused
-          on what actually matters.
+          Arrêtez de naviguer entre les onglets et de fouiller les files de tickets.
+          Deux agents IA spécialisés gèrent tout, des recherches rapides
+          de tickets aux workflows inter-départements, pour que votre équipe
+          reste concentrée sur l'essentiel.
         </p>
         <div className="hero-ctas">
           <Link href="/help-desk-agent" className="cta-primary">
-            Open Help Desk Agent
+            Ouvrir l'agent Help Desk
           </Link>
           <Link href="/departments-support-agent" className="cta-secondary">
-            Open Departments Agent
+            Ouvrir l'agent Départements
           </Link>
         </div>
 
@@ -31,25 +71,25 @@ export default function Home() {
         <div className="stats-strip">
           <div className="stat-item">
             <strong>2</strong>
-            <span>Specialised agents</span>
+            <span>Agents spécialisés</span>
           </div>
           <div className="stat-divider" aria-hidden />
           <div className="stat-item">
             <strong>GLPI</strong>
-            <span>Native integration</span>
+            <span>Intégration native</span>
           </div>
           <div className="stat-divider" aria-hidden />
           <div className="stat-item">
-            <strong>Real-time</strong>
-            <span>Ticket operations</span>
+            <strong>Temps réel</strong>
+            <span>Opérations ticket</span>
           </div>
         </div>
       </section>
 
       {/* ── Agent overview ── */}
-      <section className="agent-overview" id="agents" aria-label="Available agents">
-        <p className="eyebrow" style={{ textAlign: "center" }}>Meet the agents</p>
-        <h2 className="features-heading">Two agents, one workspace</h2>
+      <section className="agent-overview" id="agents" aria-label="Agents disponibles">
+        <p className="eyebrow" style={{ textAlign: "center" }}>Découvrez les agents</p>
+        <h2 className="features-heading">Deux agents, un seul espace</h2>
         <div className="agent-explain-grid">
 
           <div className="agent-explain-card">
@@ -59,25 +99,25 @@ export default function Home() {
               </svg>
             </div>
             <h3>Help Desk Agent</h3>
-            <p className="agent-explain-desc">Your front-line support companion. Ask anything about open tickets, user history, or priorities — and get clear, ready-to-send replies in seconds.</p>
+            <p className="agent-explain-desc">Votre copilote de support en première ligne. Posez vos questions sur les tickets ouverts, l'historique utilisateur ou les priorités, et obtenez des réponses claires en quelques secondes.</p>
             <ul className="agent-explain-list">
               <li>
                 <span className="agent-explain-bullet help-bullet">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span>
-                Search and summarise ticket history in seconds
+                Rechercher et résumer l'historique des tickets en quelques secondes
               </li>
               <li>
                 <span className="agent-explain-bullet help-bullet">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span>
-                Draft clear, actionable responses for end-users
+                Rédiger des réponses claires et actionnables pour les utilisateurs
               </li>
               <li>
                 <span className="agent-explain-bullet help-bullet">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span>
-                Track priorities and status changes in one place
+                Suivre les priorités et changements de statut au même endroit
               </li>
             </ul>
           </div>
@@ -91,26 +131,26 @@ export default function Home() {
                 <line x1="10" y1="14" x2="14" y2="14"/>
               </svg>
             </div>
-            <h3>Departments Support Agent</h3>
-            <p className="agent-explain-desc">Handles structured internal requests across teams. Ensures every submission is complete, properly routed, and ready for action — no back-and-forth.</p>
+            <h3>Agent Support Départements</h3>
+            <p className="agent-explain-desc">Gère les demandes internes structurées entre équipes. Chaque soumission est complète, correctement routée et prête à traiter, sans allers-retours inutiles.</p>
             <ul className="agent-explain-list">
               <li>
                 <span className="agent-explain-bullet dept-bullet">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span>
-                Create complete requests with all required fields
+                Créer des demandes complètes avec tous les champs requis
               </li>
               <li>
                 <span className="agent-explain-bullet dept-bullet">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span>
-                Coordinate workflows across multiple internal teams
+                Coordonner les workflows entre plusieurs équipes internes
               </li>
               <li>
                 <span className="agent-explain-bullet dept-bullet">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span>
-                Improve quality of handoffs and follow-up information
+                Améliorer la qualité des transferts et des informations de suivi
               </li>
             </ul>
           </div>
