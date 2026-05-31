@@ -148,6 +148,7 @@ Example ticket route:
 ```text
 {GLPI_BASE_URL}/api.php/v2.3/Assistance/Ticket
 ```
+
 ## Agent 1 — IT Admin Agent
 
 Full GLPI access for IT technicians. Translates natural language into 20+ GLPI API V2 operations.

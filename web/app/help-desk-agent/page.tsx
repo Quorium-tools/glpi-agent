@@ -148,21 +148,6 @@ export default function HelpDeskAgentPage() {
             <span>{OPENROUTER_MODEL_BADGE}</span>
           </div>
         </div>
-        <div className="agent-switcher">
-          <span className="agent-switcher-pill active">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            Agent Help Desk
-          </span>
-          <Link href="/departments-support-agent" className="agent-switcher-pill">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="7" width="20" height="14" rx="2"/>
-              <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-            </svg>
-            Agent Support Départements
-          </Link>
-        </div>
       </nav>
 
       {/* Sidebar */}

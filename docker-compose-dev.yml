@@ -49,6 +49,8 @@ services:
       WATCHPACK_POLLING_INTERVAL: "250"
       NEXT_WEBPACK_USEPOLLING: "1"
     command: npm run dev -- --hostname 0.0.0.0 --port 3005
+    ports:
+      - "3005:3005"
     volumes:
       - ./web:/app
       - /app/node_modules

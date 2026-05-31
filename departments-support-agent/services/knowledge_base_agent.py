@@ -538,7 +538,7 @@ class KbAgent:
         return None
 
     def _build_ticket_url(self, ticket_id: int) -> str:
-        return f"{self.glpi.settings.glpi_base_url}/front/ticket.form.php?id={ticket_id}"
+        return f"{self.glpi.settings.GLPI_BASE_URL}/front/ticket.form.php?id={ticket_id}"
 
     @staticmethod
     def _extract_current_user_message(user_message: str) -> str:

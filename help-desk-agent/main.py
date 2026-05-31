@@ -28,7 +28,7 @@ def main() -> None:
 
     if args.show_config:
         print(f"OpenRouter model: {settings.openrouter_model}")
-        print(f"GLPI base URL: {settings.glpi_base_url}")
+        print(f"GLPI base URL: {settings.GLPI_BASE_URL}")
         print(f"GLPI API version: {settings.glpi_api_version}")
         print(f"GLPI OAuth scope: {settings.glpi_oauth_scope}")
         print(f"Dry run: {settings.dry_run}")

@@ -71,8 +71,8 @@ TICKET_LEVEL_CODES = {
 class GlpiClient(AbstractContextManager["GlpiClient"]):
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.api_root = f"{settings.glpi_base_url}/api.php/{settings.glpi_api_version}"
-        self.token_url = f"{settings.glpi_base_url}/api.php/token"
+        self.api_root = f"{settings.GLPI_BASE_URL}/api.php/{settings.glpi_api_version}"
+        self.token_url = f"{settings.GLPI_BASE_URL}/api.php/token"
         self.access_token: str | None = None
 
     def __enter__(self) -> "GlpiClient":

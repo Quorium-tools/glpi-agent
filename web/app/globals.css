@@ -1190,62 +1190,6 @@ body:has(.theme-ds) {
   position: relative;
 }
 
-.home-auth-corner {
-  position: fixed;
-  top: 14px;
-  right: 20px;
-  z-index: 30;
-}
-
-.home-auth-login {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 14px;
-  border: 1px solid #9ab7ff;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #0e5844;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.home-auth-user {
-  min-width: 220px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 8px 24px rgba(10, 40, 25, 0.12);
-  padding: 10px 12px;
-  display: grid;
-  gap: 4px;
-}
-
-.home-auth-user strong {
-  font-size: 0.92rem;
-  color: var(--text);
-}
-
-.home-auth-user span {
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-.home-auth-user form {
-  margin-top: 4px;
-}
-
-.home-auth-user button {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #f4faf7;
-  color: var(--text);
-  padding: 6px 10px;
-  font-size: 0.8rem;
-  font-weight: 650;
-  cursor: pointer;
-}
-
 /* Nav */
 .home-nav {
   display: flex;
