@@ -335,6 +335,38 @@ h1 {
   color: var(--accent-dark);
 }
 
+.quick-reply-message {
+  align-items: flex-start;
+}
+
+.quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.quick-replies button {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.quick-replies button:hover:not(:disabled) {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+}
+
+.quick-replies button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .chat-panel {
   display: grid;
   grid-template-rows: auto 1fr auto;

@@ -14,6 +14,11 @@ type ChatRequest = {
     content?: string;
   }>;
   model?: string;
+  state?: Record<string, unknown>;
+  user?: {
+    email?: string;
+    name?: string;
+  };
 };
 
 function buildContextualMessage(body: ChatRequest, message: string): string {
@@ -65,6 +70,8 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           message: contextualMessage,
           model: body.model?.trim() || undefined,
+          state: isDepartmentsSupportAgent && body.state ? body.state : undefined,
+          user: isDepartmentsSupportAgent && body.user ? body.user : undefined,
         }),
       });
       const data = await response.json();

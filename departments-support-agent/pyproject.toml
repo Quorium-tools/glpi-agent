@@ -1,9 +1,0 @@
-[project]
-name = "departments-support-agent"
-version = "0.1.0"
-description = "GLPI departments support agent"
-requires-python = ">=3.12"
-dependencies = []
-
-[tool.uv]
-package = false

@@ -15,72 +15,10 @@ type ChatMessage = {
 type TicketDraft = {
   title: string;
   description: string;
-  priority: "low" | "medium" | "high" | "very high" | "major";
+  priority: "low" | "medium" | "high";
 };
 
-const DECISION_FEEDBACK_WORDS = new Set([
-  "no",
-  "n",
-  "non",
-  "yes",
-  "y",
-  "oui",
-  "pas utile",
-  "pas utile!",
-  "pas clair",
-  "crée un ticket",
-  "créer un ticket",
-]);
-
-function isTicketDecisionPrompt(text: string): boolean {
-  const n = text.toLowerCase();
-  return (
-    /create a ticket for you\?\s*\((yes\/no|y\/n)\)/.test(n) ||
-    /crée un ticket pour vous\?\s*\((oui\/non)\)/.test(n) ||
-    /créer un ticket pour vous\?\s*\((oui\/non)\)/.test(n) ||
-    /confirmez-vous la création du ticket/.test(n) ||
-    /would you like me to create a ticket/.test(n) ||
-    /do you want me to create a ticket/.test(n)
-  );
-}
-
-function looksLikeDecisionFeedback(text: string): boolean {
-  return DECISION_FEEDBACK_WORDS.has(text.toLowerCase().trim());
-}
-
-function buildTicketDraft(issue: string, previousGuidance: string): TicketDraft {
-  const normalizedIssue = issue.trim() || "Demande de support";
-  let subject = "Support IT";
-  const lower = normalizedIssue.toLowerCase();
-  if (lower.includes("printer") || lower.includes("print")) subject = "Imprimante";
-  else if (lower.includes("password")) subject = "Mot de passe";
-  else if (lower.includes("vpn")) subject = "VPN";
-  else if (lower.includes("email") || lower.includes("outlook")) subject = "E-mail";
-  else if (lower.includes("sedit")) subject = "SEDIT";
-  else if (lower.includes("security") || lower.includes("phishing")) subject = "Sécurité";
-
-  const title = `${subject} : ${normalizedIssue.slice(0, 90)}`.trim();
-  const compactGuidance = previousGuidance
-    .replace(/\s+/g, " ")
-    .replace(/is this answer helpful\?.*/i, "")
-    .replace(/would you like me to create a ticket.*$/i, "")
-    .trim();
-
-  const description = [
-    `Problème utilisateur : ${normalizedIssue}`,
-    "",
-    "Comportement observé :",
-    "- Le problème persiste malgré les conseils en self-service.",
-    "",
-    "Dépannage déjà tenté :",
-    compactGuidance ? `- ${compactGuidance.slice(0, 500)}` : "- Un premier dépannage a été effectué ; le problème persiste.",
-    "",
-    "Impact métier :",
-    "- L'utilisateur ne peut pas travailler normalement à cause de ce problème.",
-  ].join("\n");
-
-  return { title: title.slice(0, 120), description, priority: "medium" };
-}
+type AgentState = Record<string, unknown>;
 
 const starterPrompts = [
   "Comment réinitialiser mon mot de passe ?",
@@ -164,7 +102,7 @@ function TicketFormCard({
           <div className="ticket-card-field" style={{ flex: 1 }}>
             <label>Priorité</label>
             <div className="priority-pills">
-              {(["low", "medium", "high", "very high", "major"] as const).map((p) => (
+              {(["low", "medium", "high"] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -204,15 +142,20 @@ export default function DepartmentsSupportAgentPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Bonjour ! Je suis l'assistant IT en self-service du CD08. Posez vos questions sur les mots de passe, le VPN, les imprimantes, l'e-mail, SEDIT, ou signalez un incident de sécurité. Je répondrai directement ou j'ouvrirai un ticket pour vous.",
+      content: "Bonjour, je suis ARDIA !\n\nVotre assistant numérique du Département des Ardennes.\n\nBesoin d'aide avec votre ordinateur, Outlook, Teams, une imprimante ou une application métier ? Décrivez simplement votre problème et je vous guiderai pas à pas.\n\nQue puis-je faire pour vous aujourd'hui ?",
     },
   ]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [pendingTicketDraft, setPendingTicketDraft] = useState<TicketDraft | null>(null);
-  const [awaitingTicketDecision, setAwaitingTicketDecision] = useState(false);
-  const [lastIssueForTicket, setLastIssueForTicket] = useState("");
-  const [lastGuidanceForTicket, setLastGuidanceForTicket] = useState("");
+  const [agentState, setAgentState] = useState<AgentState>({});
+  const [quickReplies, setQuickReplies] = useState<string[]>([
+    "J'ai un problème informatique",
+    "Consulter mes tickets",
+    "Demander un accès",
+    "Rechercher une procédure",
+    "Contacter le support",
+  ]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const canSend = useMemo(() => input.trim().length > 0 && !isSending, [input, isSending]);
@@ -225,38 +168,10 @@ export default function DepartmentsSupportAgentPage() {
     const prompt = text.trim();
     if (!prompt || isSending) return;
 
-    const lowerPrompt = prompt.toLowerCase();
-
-    if (
-      awaitingTicketDecision &&
-      (lowerPrompt === "yes" ||
-        lowerPrompt === "y" ||
-        lowerPrompt === "oui" ||
-        lowerPrompt === "o" ||
-        lowerPrompt.includes("create ticket") ||
-        lowerPrompt.includes("crée un ticket") ||
-        lowerPrompt.includes("créer un ticket"))
-    ) {
-      setInput("");
-      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "user", content: prompt }]);
-      setPendingTicketDraft(buildTicketDraft(lastIssueForTicket, lastGuidanceForTicket));
-      setAwaitingTicketDecision(false);
-      return;
-    }
-
-    if (awaitingTicketDecision && (lowerPrompt === "no" || lowerPrompt === "n" || lowerPrompt === "non")) {
-      setInput("");
-      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "user", content: prompt }]);
-      setAwaitingTicketDecision(false);
-      setPendingTicketDraft(null);
-      setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: "Compris. Je ne crée pas de ticket." }]);
-      return;
-    }
-
     setInput("");
     setIsSending(true);
+    setQuickReplies([]);
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", content: prompt };
-    if (!looksLikeDecisionFeedback(prompt)) setLastIssueForTicket(prompt);
     setMessages((c) => [...c, userMessage]);
 
     try {
@@ -266,15 +181,25 @@ export default function DepartmentsSupportAgentPage() {
         body: JSON.stringify({
           agent: "departments-support-agent",
           message: prompt,
+          state: agentState,
           messages: [...messages, userMessage].slice(-8).map(({ role, content }) => ({ role, content })),
         }),
       });
       const data = await response.json();
       const answer = response.ok ? data.answer : `${data.error}\n${data.detail || ""}`.trim();
-      const asksTicketCreation = isTicketDecisionPrompt(answer);
-      if (asksTicketCreation) setLastGuidanceForTicket(answer);
       setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: answer }]);
-      setAwaitingTicketDecision(asksTicketCreation);
+      if (data.state && typeof data.state === "object") setAgentState(data.state);
+      if (Array.isArray(data.quickReplies)) setQuickReplies(data.quickReplies.filter((item: unknown): item is string => typeof item === "string"));
+      if (data.ticketDraft && typeof data.ticketDraft === "object") {
+        const draft = data.ticketDraft as Partial<TicketDraft>;
+        setPendingTicketDraft({
+          title: draft.title || "",
+          description: draft.description || "",
+          priority: draft.priority === "low" || draft.priority === "high" ? draft.priority : "medium",
+        });
+      } else {
+        setPendingTicketDraft(null);
+      }
     } catch (error) {
       setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: error instanceof Error ? error.message : "La requête a échoué." }]);
     } finally {
@@ -294,14 +219,16 @@ export default function DepartmentsSupportAgentPage() {
         body: JSON.stringify({
           agent: "departments-support-agent",
           message: `__TICKET_FORM__ ${JSON.stringify(pendingTicketDraft)}`,
+          state: agentState,
           messages: messages.slice(-8).map(({ role, content }) => ({ role, content })),
         }),
       });
       const data = await response.json();
       const answer = response.ok ? data.answer : `${data.error}\n${data.detail || ""}`.trim();
       setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: answer }]);
+      if (data.state && typeof data.state === "object") setAgentState(data.state);
+      if (Array.isArray(data.quickReplies)) setQuickReplies(data.quickReplies.filter((item: unknown): item is string => typeof item === "string"));
       setPendingTicketDraft(null);
-      setAwaitingTicketDecision(false);
     } catch (error) {
       setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: error instanceof Error ? error.message : "La requête a échoué." }]);
     } finally {
@@ -407,10 +334,21 @@ export default function DepartmentsSupportAgentPage() {
                 onSubmit={() => void submitTicketDraft()}
                 onDiscard={() => {
                   setPendingTicketDraft(null);
-                  setAwaitingTicketDecision(false);
                   setMessages((c) => [...c, { id: crypto.randomUUID(), role: "assistant", content: "Ticket annulé. Dites-moi si vous avez besoin d'autre chose." }]);
                 }}
               />
+            </article>
+          )}
+          {!pendingTicketDraft && quickReplies.length > 0 && (
+            <article className="message assistant quick-reply-message">
+              <div className="message-avatar"><span>DS</span></div>
+              <div className="quick-replies">
+                {quickReplies.map((reply) => (
+                  <button key={reply} type="button" onClick={() => void sendMessage(reply)} disabled={isSending}>
+                    {reply}
+                  </button>
+                ))}
+              </div>
             </article>
           )}
           {isSending && (
